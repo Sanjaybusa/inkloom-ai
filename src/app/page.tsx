@@ -1,69 +1,569 @@
-import Image from "next/image";
+
+"use client";
+
+import { useState } from "react";
+import {
+  Activity,
+  ArrowUpRight,
+  BadgeCheck,
+  Bell,
+  BookOpen,
+  Check,
+  CheckCircle2,
+  ChevronDown,
+  CircleAlert,
+  ClipboardCheck,
+  FileCheck2,
+  FileText,
+  Gauge,
+  LayoutDashboard,
+  LockKeyhole,
+  Play,
+  Search,
+  ShieldCheck,
+  Sparkles,
+  X,
+} from "lucide-react";
+
+type Finding = {
+  id: number;
+  title: string;
+  category: string;
+  severity: "High" | "Medium" | "Low";
+  status: string;
+  claim: string;
+  explanation: string;
+  evidence: string;
+  recommendation: string;
+};
+
+const sampleContent = {
+  title: "Northwind Q4 Campaign",
+  version: "v3",
+  text: `
+    Northwind Analytics helps customers make better business decisions.
+    Our platform reduces costs by 80%.
+    Connects to 5 data sources.
+    Our clients use our platform to improve reporting.
+  `,
+  image: {
+    contrastRatio: 2.8,
+    altText: "",
+  },
+};
+
+function analyzeSample(): Finding[] {
+  const content = sampleContent.text.toLowerCase();
+  const findings: Finding[] = [];
+
+  if (content.includes("80%")) {
+    findings.push({
+      id: 1,
+      title: "Unsupported savings claim",
+      category: "Claim verification",
+      severity: "High",
+      status: "Unverified",
+      claim: "Our platform reduces costs by 80%.",
+      explanation:
+        "The campaign contains a specific 80% savings claim, but the approved demo evidence library contains no source validating this figure.",
+      evidence:
+        "No approved source found in the Northwind Analytics demo claim library.",
+      recommendation:
+        "Remove the numerical claim or attach an approved study that supports the 80% figure.",
+    });
+  }
+
+  if (content.includes("5 data sources")) {
+    findings.push({
+      id: 2,
+      title: "Outdated product information",
+      category: "Fact verification",
+      severity: "High",
+      status: "Outdated",
+      claim: "Connects to 5 data sources.",
+      explanation:
+        "The campaign says 5 integrations, while the current approved Northwind demo fact sheet specifies 12 supported data sources.",
+      evidence:
+        "Northwind Product Fact Sheet · Demo version 2 · Approved fact: 12 data sources.",
+      recommendation:
+        "Replace 5 with 12 after confirming the current approved product fact sheet.",
+    });
+  }
+
+  if (content.includes("clients")) {
+    findings.push({
+      id: 3,
+      title: "Unapproved brand terminology",
+      category: "Brand consistency",
+      severity: "Medium",
+      status: "Brand violation",
+      claim: "Our clients use our platform.",
+      explanation:
+        "Northwind Analytics uses the approved term customers rather than clients in its brand terminology guide.",
+      evidence:
+        "Northwind Brand Guide · Terminology rule: use customers, not clients.",
+      recommendation:
+        "Replace clients with customers.",
+    });
+  }
+
+  if (sampleContent.image.contrastRatio < 4.5) {
+    findings.push({
+      id: 4,
+      title: "Low text contrast",
+      category: "Accessibility",
+      severity: "Medium",
+      status: "Needs correction",
+      claim: "Campaign banner text contrast",
+      explanation:
+        `The sample banner has a contrast ratio of ${sampleContent.image.contrastRatio}:1. Normal text needs at least 4.5:1 for WCAG AA.`,
+      evidence:
+        "WCAG 2.2 AA contrast requirement for normal text: 4.5:1.",
+      recommendation:
+        "Darken the text or adjust the banner background, then recalculate the contrast ratio.",
+    });
+  }
+
+  if (!sampleContent.image.altText.trim()) {
+    findings.push({
+      id: 5,
+      title: "Missing image alternative text",
+      category: "Accessibility",
+      severity: "High",
+      status: "Needs correction",
+      claim: "Northwind campaign banner image",
+      explanation:
+        "The demo campaign banner has no alternative text. Screen-reader users may miss its meaningful content.",
+      evidence:
+        "Accessibility rule: meaningful images should have an appropriate text alternative.",
+      recommendation:
+        "Add concise alternative text describing the information conveyed by the banner.",
+    });
+  }
+
+  return findings;
+}
+
+const initialFindings = analyzeSample();
 
 export default function Home() {
+  const [findings, setFindings] = useState(initialFindings);
+  const [selectedId, setSelectedId] = useState(1);
+  const [analyzed, setAnalyzed] = useState(false);
+  const [approved, setApproved] = useState(false);
+  const [activeNav, setActiveNav] = useState("Overview");
+
+  const selectedFinding =
+    findings.find((finding) => finding.id === selectedId) ??
+    findings[0];
+
+  const highCount = findings.filter(
+    (finding) => finding.severity === "High"
+  ).length;
+
+  function runAnalysis() {
+    const results = analyzeSample();
+    setFindings(results);
+    setSelectedId(results[0]?.id ?? 1);
+    setAnalyzed(true);
+    setApproved(false);
+  }
+
+  function approveReview() {
+    setApproved(true);
+  }
+
+  const navigation = [
+    { name: "Overview", icon: LayoutDashboard },
+    { name: "Claim Detective", icon: Search },
+    { name: "Evidence Library", icon: BookOpen },
+    { name: "Approvals", icon: ClipboardCheck },
+    { name: "Trust Passports", icon: FileCheck2 },
+  ];
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.tsx
-            </code>{" "}
-            file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
-    </div>
+    <main className="min-h-screen bg-[#f5f7fb] text-slate-900">
+      <div className="flex min-h-screen">
+        <aside className="hidden w-[250px] shrink-0 flex-col bg-[#101b35] text-white lg:flex">
+          <div className="flex h-[82px] items-center gap-3 border-b border-white/10 px-6">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-500">
+              <ShieldCheck size={23} />
+            </div>
+            <div>
+              <div className="text-xl font-bold tracking-tight">inkloom<span className="text-blue-400">.</span></div>
+              <div className="text-[10px] tracking-[2px] text-slate-400">CONTENT GOVERNANCE</div>
+            </div>
+          </div>
+
+          <div className="px-5 pt-7">
+            <p className="mb-3 text-[10px] font-semibold uppercase tracking-[2px] text-slate-500">
+              Workspace
+            </p>
+            <div className="mb-6 flex items-center gap-3 rounded-xl border border-white/10 bg-white/5 p-3">
+              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-indigo-500/20 text-indigo-300">
+                <Activity size={19} />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-semibold">Northwind Analytics</p>
+                <p className="text-xs text-slate-400">Demo workspace</p>
+              </div>
+              <ChevronDown size={15} className="text-slate-400" />
+            </div>
+
+            <p className="mb-3 text-[10px] font-semibold uppercase tracking-[2px] text-slate-500">
+              Menu
+            </p>
+            <nav className="space-y-1">
+              {navigation.map((item) => {
+                const Icon = item.icon;
+                const active = activeNav === item.name;
+
+                return (
+                  <button
+                    key={item.name}
+                    onClick={() => setActiveNav(item.name)}
+                    className={`flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left text-sm transition ${
+                      active
+                        ? "bg-blue-600 font-semibold text-white"
+                        : "text-slate-400 hover:bg-white/5 hover:text-white"
+                    }`}
+                  >
+                    <Icon size={18} />
+                    {item.name}
+                    {item.name === "Approvals" && (
+                      <span className="ml-auto rounded-full bg-amber-400/20 px-2 py-0.5 text-[10px] text-amber-300">
+                        1
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </nav>
+          </div>
+
+          <div className="mt-auto p-5">
+            <div className="rounded-xl border border-blue-400/20 bg-blue-500/10 p-4">
+              <div className="mb-2 flex items-center gap-2 text-sm font-semibold text-blue-200">
+                <Sparkles size={16} />
+                Public demo
+              </div>
+              <p className="text-xs leading-5 text-slate-400">
+                Explore Inkloom AI without creating an account.
+              </p>
+            </div>
+            <p className="mt-5 text-center text-[10px] text-slate-600">
+              INKLOOM AI · ROUND 2 DEMO
+            </p>
+          </div>
+        </aside>
+
+        <section className="min-w-0 flex-1">
+          <header className="sticky top-0 z-10 flex h-[76px] items-center justify-between border-b border-slate-200 bg-white/95 px-5 backdrop-blur md:px-8">
+            <div>
+              <p className="text-xs text-slate-400">Northwind Analytics / Workspace</p>
+              <h1 className="text-lg font-bold">Content Governance</h1>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <span className="hidden rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-medium text-emerald-700 sm:inline-flex">
+                <span className="mr-2 mt-1 h-2 w-2 rounded-full bg-emerald-500" />
+                Public demo
+              </span>
+              <button aria-label="Notifications" className="rounded-xl border border-slate-200 p-2.5 text-slate-500">
+                <Bell size={18} />
+              </button>
+              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-indigo-100 text-sm font-bold text-indigo-700">
+                D
+              </div>
+            </div>
+          </header>
+
+          <div className="mx-auto max-w-[1500px] space-y-6 p-5 md:p-8">
+            <div className="flex flex-col justify-between gap-4 md:flex-row md:items-end">
+              <div>
+                <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-[1.5px] text-blue-600">
+                  <Sparkles size={14} />
+                  Your content trust workspace
+                </div>
+                <h2 className="text-2xl font-bold tracking-tight md:text-3xl">
+                  Every claim. Every source. Every decision.
+                </h2>
+                <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">
+                  Check brand content against approved evidence, detect risks,
+                  and make confident publication decisions.
+                </p>
+              </div>
+
+              <button
+                onClick={runAnalysis}
+                className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-blue-600/20 transition hover:bg-blue-700"
+              >
+                <Play size={16} fill="currentColor" />
+                {analyzed ? "Run Analysis Again" : "Run Sample Analysis"}
+              </button>
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+              {[
+                {
+                  label: "Claims checked",
+                  value: analyzed ? "5" : "—",
+                  note: "Northwind campaign",
+                  icon: FileText,
+                  color: "blue",
+                },
+                {
+                  label: "Unverified / outdated",
+                  value: findings.filter((f) => ["Unverified", "Outdated"].includes(f.status)).length.toString(),
+                  note: "Evidence review needed",
+                  icon: CircleAlert,
+                  color: "amber",
+                },
+                {
+                  label: "High-priority findings",
+                  value: highCount.toString(),
+                  note: "Require attention",
+                  icon: Activity,
+                  color: "rose",
+                },
+                {
+                  label: "Review status",
+                  value: approved ? "Approved" : "Pending",
+                  note: approved ? "Reviewer decision recorded" : "Human approval required",
+                  icon: ClipboardCheck,
+                  color: "violet",
+                },
+              ].map((stat) => {
+                const Icon = stat.icon;
+                const colors: Record<string, string> = {
+                  blue: "bg-blue-50 text-blue-600",
+                  amber: "bg-amber-50 text-amber-600",
+                  rose: "bg-rose-50 text-rose-600",
+                  violet: "bg-violet-50 text-violet-600",
+                };
+
+                return (
+                  <div key={stat.label} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                    <div className="flex items-center justify-between">
+                      <p className="text-sm text-slate-500">{stat.label}</p>
+                      <div className={`rounded-xl p-2.5 ${colors[stat.color]}`}>
+                        <Icon size={19} />
+                      </div>
+                    </div>
+                    <p className="mt-4 text-3xl font-bold tracking-tight">{stat.value}</p>
+                    <p className="mt-1 text-xs text-slate-400">{stat.note}</p>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="grid items-start gap-5 xl:grid-cols-[1.45fr_0.85fr]">
+              <div className="space-y-5">
+                <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+                  <div className="flex flex-col justify-between gap-3 border-b border-slate-100 p-5 sm:flex-row sm:items-center">
+                    <div>
+                      <h3 className="font-bold">Content review</h3>
+                      <p className="mt-1 text-xs text-slate-400">
+                        Sample campaign · Version 3 · Northwind Analytics
+                      </p>
+                    </div>
+                    <span className="w-fit rounded-full bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-700">
+                      {approved ? "Approved with demo review" : "Review required"}
+                    </span>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-3 border-b border-slate-100 bg-slate-50/70 px-5 py-3 text-xs text-slate-500">
+                    <span className="flex items-center gap-1.5"><FileText size={14}/> {sampleContent.title}</span>
+                    <span>•</span>
+                    <span>{sampleContent.version}</span>
+                    <span>•</span>
+                    <span>{findings.length} findings</span>
+                  </div>
+
+                  <div className="divide-y divide-slate-100">
+                    {findings.map((finding) => (
+                      <button
+                        key={finding.id}
+                        onClick={() => setSelectedId(finding.id)}
+                        className={`flex w-full flex-col gap-3 px-5 py-4 text-left transition sm:flex-row sm:items-center ${
+                          selectedId === finding.id
+                            ? "bg-blue-50/70"
+                            : "hover:bg-slate-50"
+                        }`}
+                      >
+                        <div className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${
+                          finding.severity === "High"
+                            ? "bg-rose-50 text-rose-600"
+                            : finding.severity === "Medium"
+                              ? "bg-amber-50 text-amber-600"
+                              : "bg-slate-100 text-slate-600"
+                        }`}>
+                          <CircleAlert size={18} />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-semibold">{finding.title}</p>
+                          <p className="mt-1 text-xs text-slate-500">{finding.category}</p>
+                        </div>
+                        <div className="flex items-center gap-2 pl-12 sm:pl-0">
+                          <span className={`rounded-full px-2.5 py-1 text-[10px] font-semibold ${
+                            finding.severity === "High"
+                              ? "bg-rose-50 text-rose-700"
+                              : "bg-amber-50 text-amber-700"
+                          }`}>
+                            {finding.severity}
+                          </span>
+                          <span className="max-w-[120px] truncate rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-medium text-slate-600">
+                            {finding.status}
+                          </span>
+                          <ArrowUpRight size={16} className="text-slate-400" />
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                  <div className="border-t border-slate-100 bg-slate-50/60 px-5 py-3 text-xs text-slate-400">
+                    Demo findings are generated from seeded content and sample rules.
+                  </div>
+                </div>
+
+                <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="font-bold">Review workflow</h3>
+                      <p className="mt-1 text-xs text-slate-400">Human decision comes before publication.</p>
+                    </div>
+                    <ShieldCheck className="text-blue-600" size={22} />
+                  </div>
+
+                  <div className="mt-5 grid gap-3 sm:grid-cols-3">
+                    <div className="rounded-xl bg-blue-50 p-3">
+                      <Search className="mb-2 text-blue-600" size={18}/>
+                      <p className="text-xs font-semibold">1. Analyze</p>
+                      <p className="mt-1 text-[11px] text-slate-500">Check claims and rules.</p>
+                    </div>
+                    <div className="rounded-xl bg-violet-50 p-3">
+                      <BookOpen className="mb-2 text-violet-600" size={18}/>
+                      <p className="text-xs font-semibold">2. Review</p>
+                      <p className="mt-1 text-[11px] text-slate-500">Inspect evidence and fixes.</p>
+                    </div>
+                    <div className="rounded-xl bg-emerald-50 p-3">
+                      <BadgeCheck className="mb-2 text-emerald-600" size={18}/>
+                      <p className="text-xs font-semibold">3. Approve</p>
+                      <p className="mt-1 text-[11px] text-slate-500">Record human decision.</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="rounded-2xl border border-slate-200 bg-white shadow-sm">
+                <div className="border-b border-slate-100 p-5">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-wider text-blue-600">Claim Detective</p>
+                      <h3 className="mt-1 font-bold">Finding details</h3>
+                    </div>
+                    <div className="rounded-lg bg-blue-50 p-2 text-blue-600">
+                      <Search size={18}/>
+                    </div>
+                  </div>
+                </div>
+
+                {selectedFinding && (
+                  <div className="space-y-5 p-5">
+                    <div>
+                      <div className="mb-2 flex flex-wrap gap-2">
+                        <span className="rounded-full bg-rose-50 px-2.5 py-1 text-[10px] font-semibold text-rose-700">
+                          {selectedFinding.severity} priority
+                        </span>
+                        <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-semibold text-slate-600">
+                          {selectedFinding.status}
+                        </span>
+                      </div>
+                      <h4 className="text-lg font-bold">{selectedFinding.title}</h4>
+                    </div>
+
+                    <div>
+                      <p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-slate-400">Content under review</p>
+                      <div className="rounded-xl border border-rose-100 bg-rose-50/60 p-3 text-sm leading-6 text-slate-700">
+                        “{selectedFinding.claim}”
+                      </div>
+                    </div>
+
+                    <div>
+                      <p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-slate-400">Why it was flagged</p>
+                      <p className="text-sm leading-6 text-slate-600">{selectedFinding.explanation}</p>
+                    </div>
+
+                    <div className="rounded-xl border border-blue-100 bg-blue-50/60 p-4">
+                      <div className="mb-2 flex items-center gap-2 text-xs font-bold text-blue-800">
+                        <BookOpen size={15}/>
+                        Evidence / rule reference
+                      </div>
+                      <p className="text-xs leading-5 text-slate-600">{selectedFinding.evidence}</p>
+                    </div>
+
+                    <div>
+                      <p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-slate-400">Suggested action</p>
+                      <div className="rounded-xl border border-emerald-100 bg-emerald-50/60 p-3">
+                        <div className="mb-2 flex items-center gap-2 text-xs font-semibold text-emerald-800">
+                          <Sparkles size={14}/>
+                          Recommended correction
+                        </div>
+                        <p className="text-sm leading-6 text-slate-700">{selectedFinding.recommendation}</p>
+                      </div>
+                    </div>
+
+                    <div className="border-t border-slate-100 pt-4">
+                      <button
+                        onClick={approveReview}
+                        disabled={approved}
+                        className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#101b35] px-4 py-3 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-emerald-700"
+                      >
+                        {approved ? <Check size={17}/> : <CheckCircle2 size={17}/>}
+                        {approved ? "Demo review approved" : "Approve demo review"}
+                      </button>
+                      <p className="mt-2 text-center text-[10px] leading-4 text-slate-400">
+                        Demonstration interaction only. Persistent reviewer records will be added with Supabase.
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="rounded-2xl bg-[#101b35] p-6 text-white md:flex md:items-center md:justify-between">
+              <div className="flex items-start gap-4">
+                <div className="rounded-xl bg-white/10 p-3">
+                  <FileCheck2 size={24}/>
+                </div>
+                <div>
+                  <p className="text-lg font-bold">Evidence Passport</p>
+                  <p className="mt-1 max-w-xl text-sm leading-6 text-slate-300">
+                    A transparent record of checked claims, findings, evidence,
+                    and human review decisions.
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => window.alert(
+                  approved
+                    ? "Passport preview: Northwind Q4 Campaign. Demo approval recorded in this session. Persistent passport generation is coming next."
+                    : "Complete the demo review first to preview the approval record."
+                )}
+                className="mt-5 inline-flex items-center gap-2 rounded-xl bg-white px-4 py-3 text-sm font-semibold text-[#101b35] transition hover:bg-blue-50 md:mt-0"
+              >
+                <FileCheck2 size={16}/>
+                Preview Passport
+                <ArrowUpRight size={15}/>
+              </button>
+            </div>
+
+            <footer className="flex flex-col justify-between gap-2 pb-3 text-xs text-slate-400 sm:flex-row">
+              <p>© 2026 Inkloom AI · Every claim checked, every asset on-brand.</p>
+              <p>Public demonstration · Fictional Northwind Analytics data</p>
+            </footer>
+          </div>
+        </section>
+      </div>
+    </main>
   );
 }
