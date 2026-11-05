@@ -1,0 +1,61 @@
+# Judge-ready demo stories; table order is build order.
+# next_id = 7
+
+[[entry]]
+id = 1
+type = "story"
+title = "Complete the no-login campaign tracing path"
+description = "Wire one seeded campaign from public input through findings, evidence, approval, and passport preview so a judge can see the complete workflow."
+verify = "From the public dashboard, run the sample analysis, open evidence, approve the review, and view the generated passport."
+covers = ["R1", "R3", "R4"]
+after = []
+hitl = false
+risk = "high"
+refine = true
+plan_checkpoint = true
+
+[[entry]]
+id = 2
+type = "story"
+title = "Add custom campaign analysis input"
+description = "Let judges replace seeded campaign copy with their own campaign text and run the governance analysis."
+verify = "Enter custom text, run analysis, and see the submitted text represented in the workspace findings."
+covers = ["R2"]
+after = [1]
+hitl = false
+risk = "medium"
+refine = true
+
+[[entry]]
+id = 3
+type = "story"
+title = "Deliver a downloadable Evidence Passport"
+description = "Generate a portable evidence artifact from the approval result and provide a working download action."
+verify = "After approval, download the passport and confirm it contains the campaign summary, findings, evidence, and decision."
+covers = ["R4"]
+after = [1]
+hitl = false
+risk = "high"
+refine = true
+
+[[entry]]
+id = 4
+type = "story"
+title = "Remove judge-facing limitations and polish the public state"
+description = "Replace setup, persistence, or coming-soon language with clear public-product copy and responsive visual polish."
+verify = "Search the visible UI for login, signup, Supabase, and coming-soon claims; inspect desktop and mobile layouts."
+covers = ["R1", "R5"]
+after = [1]
+hitl = false
+risk = "low"
+
+[[entry]]
+id = 5
+type = "story"
+title = "Deploy and verify the public production demo"
+description = "Publish the application, run a production smoke test, and leave a stable judge URL for presentation."
+verify = "Open the deployed URL, complete the sample flow, download the passport, and confirm lint and build pass."
+covers = ["R1", "R5"]
+after = [2, 3, 4]
+hitl = true
+risk = "high"
