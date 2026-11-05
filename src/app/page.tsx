@@ -64,6 +64,40 @@ type CampaignSnapshot = {
   };
 };
 
+const passportRulesVersion = "1.0";
+const passportEvidenceLibraryVersion = "northwind-demo-v2";
+
+function escapeMarkdownText(value: string): string {
+  const escaped = value
+    .replace(/\r/g, "\\r")
+    .replace(/\t/g, "\\t")
+    .replace(/\\/g, "\\\\")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/`/g, "\\`")
+    .replace(/([*_{}\[\]()#+.!|~])/g, "\\$1");
+
+  return escaped
+    .split("\n")
+    .map((line) => line
+      .replace(/^(\s*)([-+>#=])/g, "$1\\$2")
+      .replace(/^(\s*)(\d+)([.)])/g, "$1$2\\$3"))
+    .join("\n");
+}
+
+function safePassportFilename(campaignTitle: string): string {
+  const slug = campaignTitle
+    .normalize("NFKD")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "")
+    .slice(0, 48)
+    .replace(/-$/g, "");
+
+  return `${slug || "campaign"}-passport-v1.0.md`;
+}
+
 function extractClaim(text: string, phrase: string, fallback: string): string {
   const matchingSentence = text
     .split(/[.!?]+|\n+/)
@@ -268,6 +302,78 @@ export default function Home() {
       }));
       setPassportPreviewOpen(false);
     }
+  }
+
+  const passportExportApproved =
+    snapshot.status === "approved" &&
+    snapshot.approval.approved === true &&
+    Boolean(snapshot.approval.approvedAt);
+
+  function downloadEvidencePassport() {
+    if (
+      snapshot.status !== "approved" ||
+      snapshot.approval.approved !== true ||
+      !snapshot.approval.approvedAt
+    ) {
+      return;
+    }
+
+    const current = snapshot;
+    const lines = [
+      "# Evidence Passport",
+      "",
+      "## Campaign Summary",
+      "",
+      `- Campaign title: ${escapeMarkdownText(current.campaignTitle)}`,
+      `- Campaign text: ${escapeMarkdownText(current.campaignText)}`,
+      `- Run ID: ${escapeMarkdownText(current.runId)}`,
+      `- Analysis timestamp: ${escapeMarkdownText(current.analyzedAt ?? "")}`,
+      `- Status: ${escapeMarkdownText(current.status)}`,
+      `- Schema version: ${escapeMarkdownText(current.schemaVersion)}`,
+      `- Rules version: ${escapeMarkdownText(passportRulesVersion)}`,
+      `- Evidence library version: ${escapeMarkdownText(passportEvidenceLibraryVersion)}`,
+      "",
+      "## Approval Decision",
+      "",
+      `- Approval outcome: ${escapeMarkdownText(current.approval.approved ? "Approved" : "Not approved")}`,
+      `- Approval timestamp: ${escapeMarkdownText(current.approval.approvedAt ?? "")}`,
+      "",
+      "## Findings and Evidence",
+      "",
+    ];
+
+    if (current.findings.length === 0) {
+      lines.push("No findings were generated for this approved snapshot.");
+    } else {
+      current.findings.forEach((finding, index) => {
+        lines.push(
+          `### Finding ${index + 1}`,
+          "",
+          `- Finding ID: ${escapeMarkdownText(String(finding.id))}`,
+          `- Title: ${escapeMarkdownText(finding.title)}`,
+          `- Category: ${escapeMarkdownText(finding.category)}`,
+          `- Severity: ${escapeMarkdownText(finding.severity)}`,
+          `- Status: ${escapeMarkdownText(finding.status)}`,
+          `- Claim: ${escapeMarkdownText(finding.claim)}`,
+          `- Explanation: ${escapeMarkdownText(finding.explanation)}`,
+          `- Evidence: ${escapeMarkdownText(finding.evidence)}`,
+          `- Recommendation / correction: ${escapeMarkdownText(finding.recommendation)}`,
+          ""
+        );
+      });
+    }
+
+    const markdown = `${lines.join("\n").trimEnd()}\n`;
+    const blob = new Blob([markdown], { type: "text/markdown;charset=utf-8" });
+    const objectUrl = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = objectUrl;
+    anchor.download = safePassportFilename(current.campaignTitle);
+    anchor.style.display = "none";
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
   }
 
   const navigation = [
@@ -765,20 +871,32 @@ export default function Home() {
                     </p>
                   </div>
                 </div>
-                <button
-                  onClick={() => setPassportPreviewOpen((open) => !open)}
-                  aria-expanded={passportPreviewOpen}
-                  className="mt-5 inline-flex items-center gap-2 rounded-xl bg-white px-4 py-3 text-sm font-semibold text-[#101b35] transition hover:bg-blue-50 md:mt-0"
-                >
-                  <FileCheck2 size={16}/>
-                  {passportPreviewOpen ? "Close Preview" : "Preview Passport"}
-                  <ArrowUpRight size={15}/>
-                </button>
+                <div className="mt-5 flex flex-wrap gap-2 md:mt-0">
+                  {passportExportApproved && (
+                    <button
+                      type="button"
+                      onClick={downloadEvidencePassport}
+                      className="inline-flex items-center gap-2 rounded-xl bg-emerald-400 px-4 py-3 text-sm font-semibold text-[#101b35] transition hover:bg-emerald-300"
+                    >
+                      <FileCheck2 size={16}/>
+                      Download Passport
+                    </button>
+                  )}
+                  <button
+                    onClick={() => setPassportPreviewOpen((open) => !open)}
+                    aria-expanded={passportPreviewOpen}
+                    className="inline-flex items-center gap-2 rounded-xl bg-white px-4 py-3 text-sm font-semibold text-[#101b35] transition hover:bg-blue-50"
+                  >
+                    <FileCheck2 size={16}/>
+                    {passportPreviewOpen ? "Close Preview" : "Preview Passport"}
+                    <ArrowUpRight size={15}/>
+                  </button>
+                </div>
               </div>
 
               {passportPreviewOpen && (
                 <div className="border-t border-white/10 bg-white p-5 text-slate-900 md:p-6">
-                  {!approved ? (
+                  {!passportExportApproved ? (
                     <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-4">
                       <p className="text-sm font-semibold text-amber-900">Complete the review first</p>
                       <p className="mt-1 text-xs leading-5 text-amber-800">
