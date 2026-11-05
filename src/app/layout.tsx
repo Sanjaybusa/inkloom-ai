@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "Inkloom AI | Content Governance",
-  description: "Public content governance demo for reviewing claims, evidence, and publication decisions.",
+  description: "Review campaign claims, evidence, and publication decisions in the Inkloom content-governance workspace.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

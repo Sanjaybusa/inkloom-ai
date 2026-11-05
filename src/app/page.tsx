@@ -6,11 +6,9 @@ import {
   Activity,
   ArrowUpRight,
   BadgeCheck,
-  Bell,
   BookOpen,
   Check,
   CheckCircle2,
-  ChevronDown,
   CircleAlert,
   ClipboardCheck,
   FileCheck2,
@@ -35,10 +33,10 @@ type Finding = {
 };
 
 const sampleContent = {
-  title: "Northwind Q4 Campaign",
+  title: "Q4 Campaign",
   version: "v3",
   text: `
-    Northwind Analytics helps customers make better business decisions.
+    Analytics helps customers make better business decisions.
     Our platform reduces costs by 80%.
     Connects to 5 data sources.
     Our clients use our platform to improve reporting.
@@ -124,9 +122,9 @@ function analyzeText(text: string, isSample: boolean): Finding[] {
         "Our platform reduces costs by 80%."
       ),
       explanation:
-        "The campaign contains a specific 80% savings claim, but the approved demo evidence library contains no source validating this figure.",
+        "The campaign contains a specific 80% savings claim, but the approved evidence library contains no source validating this figure.",
       evidence:
-        "No approved source found in the Northwind Analytics demo claim library.",
+        "No approved source found in the campaign claim library.",
       recommendation:
         "Remove the numerical claim or attach an approved study that supports the 80% figure.",
     });
@@ -145,9 +143,9 @@ function analyzeText(text: string, isSample: boolean): Finding[] {
         "Connects to 5 data sources."
       ),
       explanation:
-        "The campaign says 5 integrations, while the current approved Northwind demo fact sheet specifies 12 supported data sources.",
+        "The campaign says 5 integrations, while the current approved fact sheet specifies 12 supported data sources.",
       evidence:
-        "Northwind Product Fact Sheet · Demo version 2 · Approved fact: 12 data sources.",
+        "Product Fact Sheet · Version 2 · Approved fact: 12 data sources.",
       recommendation:
         "Replace 5 with 12 after confirming the current approved product fact sheet.",
     });
@@ -166,9 +164,9 @@ function analyzeText(text: string, isSample: boolean): Finding[] {
         "Our clients use our platform."
       ),
       explanation:
-        "Northwind Analytics uses the approved term customers rather than clients in its brand terminology guide.",
+        "The approved brand terminology uses customers rather than clients.",
       evidence:
-        "Northwind Brand Guide · Terminology rule: use customers, not clients.",
+        "Brand Guide · Terminology rule: use customers, not clients.",
       recommendation:
         "Replace clients with customers.",
     });
@@ -198,9 +196,9 @@ function analyzeText(text: string, isSample: boolean): Finding[] {
       category: "Accessibility",
       severity: "High",
       status: "Needs correction",
-      claim: "Northwind campaign banner image",
+      claim: "Campaign banner image",
       explanation:
-        "The demo campaign banner has no alternative text. Screen-reader users may miss its meaningful content.",
+        "The campaign banner has no alternative text. Screen-reader users may miss its meaningful content.",
       evidence:
         "Accessibility rule: meaningful images should have an appropriate text alternative.",
       recommendation:
@@ -229,7 +227,6 @@ export default function Home() {
     },
   });
   const [passportPreviewOpen, setPassportPreviewOpen] = useState(false);
-  const [activeNav, setActiveNav] = useState("Overview");
 
   const findings = snapshot.findings;
   const selectedId = snapshot.selectedFindingId;
@@ -377,11 +374,10 @@ export default function Home() {
   }
 
   const navigation = [
-    { name: "Overview", icon: LayoutDashboard },
-    { name: "Claim Detective", icon: Search },
-    { name: "Evidence Library", icon: BookOpen },
-    { name: "Approvals", icon: ClipboardCheck },
-    { name: "Trust Passports", icon: FileCheck2 },
+    { name: "Campaign", icon: LayoutDashboard, href: "#campaign" },
+    { name: "Findings", icon: Search, href: "#findings" },
+    { name: "Review", icon: ClipboardCheck, href: "#review" },
+    { name: "Evidence Passport", icon: FileCheck2, href: "#passport" },
   ];
 
   return (
@@ -407,10 +403,9 @@ export default function Home() {
                 <Activity size={19} />
               </div>
               <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-semibold">Northwind Analytics</p>
-                <p className="text-xs text-slate-400">Demo workspace</p>
+                <p className="truncate text-sm font-semibold">Campaign workspace</p>
+                <p className="text-xs text-slate-400">Public review</p>
               </div>
-              <ChevronDown size={15} className="text-slate-400" />
             </div>
 
             <p className="mb-3 text-[10px] font-semibold uppercase tracking-[2px] text-slate-500">
@@ -419,26 +414,15 @@ export default function Home() {
             <nav className="space-y-1">
               {navigation.map((item) => {
                 const Icon = item.icon;
-                const active = activeNav === item.name;
-
                 return (
-                  <button
+                  <a
                     key={item.name}
-                    onClick={() => setActiveNav(item.name)}
-                    className={`flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left text-sm transition ${
-                      active
-                        ? "bg-blue-600 font-semibold text-white"
-                        : "text-slate-400 hover:bg-white/5 hover:text-white"
-                    }`}
+                    href={item.href}
+                    className="flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left text-sm text-slate-400 transition hover:bg-white/5 hover:text-white"
                   >
                     <Icon size={18} />
                     {item.name}
-                    {item.name === "Approvals" && (
-                      <span className="ml-auto rounded-full bg-amber-400/20 px-2 py-0.5 text-[10px] text-amber-300">
-                        1
-                      </span>
-                    )}
-                  </button>
+                  </a>
                 );
               })}
             </nav>
@@ -448,14 +432,14 @@ export default function Home() {
             <div className="rounded-xl border border-blue-400/20 bg-blue-500/10 p-4">
               <div className="mb-2 flex items-center gap-2 text-sm font-semibold text-blue-200">
                 <Sparkles size={16} />
-                Public demo
+                Review workspace
               </div>
               <p className="text-xs leading-5 text-slate-400">
-                Explore Inkloom AI without creating an account.
+                Move from campaign copy to evidence-backed decisions.
               </p>
             </div>
             <p className="mt-5 text-center text-[10px] text-slate-600">
-              INKLOOM AI · ROUND 2 DEMO
+              INKLOOM AI · CONTENT GOVERNANCE
             </p>
           </div>
         </aside>
@@ -463,23 +447,29 @@ export default function Home() {
         <section className="min-w-0 flex-1">
           <header className="sticky top-0 z-10 flex h-[76px] items-center justify-between border-b border-slate-200 bg-white/95 px-5 backdrop-blur md:px-8">
             <div>
-              <p className="text-xs text-slate-400">Northwind Analytics / Workspace</p>
+              <p className="text-xs text-slate-400">Campaign / Review workspace</p>
               <h1 className="text-lg font-bold">Content Governance</h1>
             </div>
 
             <div className="flex items-center gap-3">
               <span className="hidden rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-medium text-emerald-700 sm:inline-flex">
                 <span className="mr-2 mt-1 h-2 w-2 rounded-full bg-emerald-500" />
-                Public demo
+                Public workspace
               </span>
-              <button aria-label="Notifications" className="rounded-xl border border-slate-200 p-2.5 text-slate-500">
-                <Bell size={18} />
-              </button>
-              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-indigo-100 text-sm font-bold text-indigo-700">
-                D
-              </div>
             </div>
           </header>
+
+          <nav aria-label="Workspace sections" className="grid grid-cols-4 border-b border-slate-200 bg-white lg:hidden">
+            {navigation.map((item) => (
+              <a
+                key={item.name}
+                href={item.href}
+                className="min-w-0 border-r border-slate-100 px-1 py-3 text-center text-[10px] font-semibold text-slate-600 last:border-r-0 hover:bg-slate-50"
+              >
+                {item.name === "Evidence Passport" ? "Passport" : item.name}
+              </a>
+            ))}
+          </nav>
 
           <div className="mx-auto max-w-[1500px] space-y-6 p-5 md:p-8">
             <div className="flex flex-col justify-between gap-4 md:flex-row md:items-end">
@@ -506,14 +496,14 @@ export default function Home() {
               </button>
             </div>
 
-            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <div id="campaign" className="scroll-mt-32 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
               <div className="flex flex-col justify-between gap-2 sm:flex-row sm:items-end">
                 <div>
                   <label htmlFor="campaign-text" className="font-bold">
                     Campaign copy
                   </label>
                   <p className="mt-1 text-xs text-slate-400">
-                    Replace the sample copy or keep it as the demo starting point.
+                    Replace the sample copy or use it as your starting point.
                   </p>
                 </div>
                 <span
@@ -532,6 +522,17 @@ export default function Home() {
                 onChange={(event) => {
                   const value = event.target.value;
                   setCampaignEditor(value);
+                  setPassportPreviewOpen(false);
+                  setSnapshot((current) => ({
+                    ...current,
+                    status: "pending",
+                    findings: [],
+                    selectedFindingId: null,
+                    approval: {
+                      approved: false,
+                      approvedAt: null,
+                    },
+                  }));
                   if (value.trim()) {
                     setCampaignError(value.length > 2000
                       ? "Campaign text must be 2,000 characters or fewer."
@@ -552,7 +553,7 @@ export default function Home() {
               />
               <div className="mt-2 flex flex-col justify-between gap-2 sm:flex-row">
                 <p id="campaign-limit" className="text-xs text-slate-400">
-                  Maximum 2,000 characters. Copy stays in this browser.
+                  Maximum 2,000 characters. Campaign text stays in this workspace.
                 </p>
                 {campaignError && (
                   <p id="campaign-error" role="alert" className="text-xs font-semibold text-rose-700">
@@ -623,17 +624,17 @@ export default function Home() {
 
             <div className="grid items-start gap-5 xl:grid-cols-[1.45fr_0.85fr]">
               <div className="space-y-5">
-                <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+                <div id="findings" className="scroll-mt-32 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
                   <div className="flex flex-col justify-between gap-3 border-b border-slate-100 p-5 sm:flex-row sm:items-center">
                     <div>
                       <h3 className="font-bold">Content review</h3>
                       <p className="mt-1 text-xs text-slate-400">
-                        {analyzed ? "Submitted campaign" : "Sample campaign"} · {snapshot.campaignTitle}
+                        {analyzed ? "Submitted campaign" : "Current campaign"} · {snapshot.campaignTitle}
                       </p>
                     </div>
                     <span className="w-fit rounded-full bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-700">
                       {approved
-                        ? "Approved with demo review"
+                        ? "Review approved"
                         : analyzed && findings.length === 0
                           ? "Valid · No findings"
                           : analyzed
@@ -655,7 +656,7 @@ export default function Home() {
                       <p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-slate-400">
                         Submitted campaign text
                       </p>
-                      <p className="whitespace-pre-wrap rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm leading-6 text-slate-700">
+                      <p className="whitespace-pre-wrap break-words [overflow-wrap:anywhere] rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm leading-6 text-slate-700">
                         {snapshot.campaignText}
                       </p>
                     </div>
@@ -673,7 +674,7 @@ export default function Home() {
                         <p className="mt-1 text-xs text-slate-500">
                           {analyzed
                             ? "The submitted text matched no governed phrases. Approval remains unavailable."
-                            : "Run analysis to check the current campaign copy against the demo rules."}
+                            : "Run analysis to check the current campaign copy against the governing rules."}
                         </p>
                       </div>
                     ) : (
@@ -726,7 +727,7 @@ export default function Home() {
                   </div>
                 </div>
 
-                <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                <div id="review" className="scroll-mt-32 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
                   <div className="flex items-center justify-between">
                     <div>
                       <h3 className="font-bold">Review workflow</h3>
@@ -820,13 +821,13 @@ export default function Home() {
                         className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#101b35] px-4 py-3 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-emerald-700"
                       >
                         {approved ? <Check size={17}/> : <CheckCircle2 size={17}/>}
-                        {approved ? "Demo review approved" : "Approve demo review"}
+                        {approved ? "Review approved" : "Approve review"}
                       </button>
                       <p className="mt-2 text-center text-[10px] leading-4 text-slate-400">
                         {approved
-                          ? "Approved for this browser session. The decision cannot be repeated."
+                          ? "Approved for the current campaign snapshot."
                           : analyzed
-                            ? "Review the evidence, then approve this demo decision once."
+                            ? "Review the evidence, then approve the decision once."
                             : "Run campaign analysis before approving this review."}
                       </p>
                     </div>
@@ -857,7 +858,7 @@ export default function Home() {
               </div>
             </div>
 
-            <div className="overflow-hidden rounded-2xl bg-[#101b35] text-white">
+            <div id="passport" className="scroll-mt-32 overflow-hidden rounded-2xl bg-[#101b35] text-white">
               <div className="p-6 md:flex md:items-center md:justify-between">
                 <div className="flex items-start gap-4">
                   <div className="rounded-xl bg-white/10 p-3">
@@ -882,6 +883,8 @@ export default function Home() {
                       Download Passport
                     </button>
                   )}
+                  {snapshot.status !== "pending" ||
+                    snapshot.campaignText.trim() === campaignEditor.trim() ? (
                   <button
                     onClick={() => setPassportPreviewOpen((open) => !open)}
                     aria-expanded={passportPreviewOpen}
@@ -891,6 +894,7 @@ export default function Home() {
                     {passportPreviewOpen ? "Close Preview" : "Preview Passport"}
                     <ArrowUpRight size={15}/>
                   </button>
+                  ) : null}
                 </div>
               </div>
 
@@ -900,7 +904,7 @@ export default function Home() {
                     <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-4">
                       <p className="text-sm font-semibold text-amber-900">Complete the review first</p>
                       <p className="mt-1 text-xs leading-5 text-amber-800">
-                        Select a finding, review its evidence, and approve the demo review before previewing the passport.
+                        Select a finding, review its evidence, and approve the review before previewing the passport.
                       </p>
                     </div>
                   ) : (
@@ -931,8 +935,8 @@ export default function Home() {
                         </div>
                         <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
                           <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Approval outcome</p>
-                          <p className="mt-2 text-sm font-semibold text-emerald-700">Approved by demo reviewer</p>
-                          <p className="mt-1 text-xs text-slate-500">Browser-local decision</p>
+                          <p className="mt-2 text-sm font-semibold text-emerald-700">Approved by reviewer</p>
+                          <p className="mt-1 text-xs text-slate-500">Recorded for this review snapshot</p>
                         </div>
                       </div>
 
@@ -961,7 +965,7 @@ export default function Home() {
 
             <footer className="flex flex-col justify-between gap-2 pb-3 text-xs text-slate-400 sm:flex-row">
               <p>© 2026 Inkloom AI · Every claim checked, every asset on-brand.</p>
-              <p>Public demonstration · Fictional Northwind Analytics data</p>
+              <p>Campaign governance workspace</p>
             </footer>
           </div>
         </section>
