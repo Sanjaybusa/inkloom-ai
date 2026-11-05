@@ -15,14 +15,11 @@ import {
   ClipboardCheck,
   FileCheck2,
   FileText,
-  Gauge,
   LayoutDashboard,
-  LockKeyhole,
   Play,
   Search,
   ShieldCheck,
   Sparkles,
-  X,
 } from "lucide-react";
 
 type Finding = {
@@ -144,18 +141,17 @@ function analyzeSample(): Finding[] {
   return findings;
 }
 
-const initialFindings = analyzeSample();
-
 export default function Home() {
-  const [findings, setFindings] = useState(initialFindings);
-  const [selectedId, setSelectedId] = useState(1);
+  const [findings, setFindings] = useState<Finding[]>([]);
+  const [selectedId, setSelectedId] = useState<number | null>(null);
   const [analyzed, setAnalyzed] = useState(false);
   const [approved, setApproved] = useState(false);
+  const [passportPreviewOpen, setPassportPreviewOpen] = useState(false);
   const [activeNav, setActiveNav] = useState("Overview");
 
   const selectedFinding =
     findings.find((finding) => finding.id === selectedId) ??
-    findings[0];
+    undefined;
 
   const highCount = findings.filter(
     (finding) => finding.severity === "High"
@@ -164,13 +160,17 @@ export default function Home() {
   function runAnalysis() {
     const results = analyzeSample();
     setFindings(results);
-    setSelectedId(results[0]?.id ?? 1);
+    setSelectedId(results[0]?.id ?? null);
     setAnalyzed(true);
     setApproved(false);
+    setPassportPreviewOpen(false);
   }
 
   function approveReview() {
-    setApproved(true);
+    if (analyzed && selectedFinding && findings.length > 0) {
+      setApproved(true);
+      setPassportPreviewOpen(false);
+    }
   }
 
   const navigation = [
@@ -381,44 +381,57 @@ export default function Home() {
                   </div>
 
                   <div className="divide-y divide-slate-100">
-                    {findings.map((finding) => (
-                      <button
-                        key={finding.id}
-                        onClick={() => setSelectedId(finding.id)}
-                        className={`flex w-full flex-col gap-3 px-5 py-4 text-left transition sm:flex-row sm:items-center ${
-                          selectedId === finding.id
-                            ? "bg-blue-50/70"
-                            : "hover:bg-slate-50"
-                        }`}
-                      >
-                        <div className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${
-                          finding.severity === "High"
-                            ? "bg-rose-50 text-rose-600"
-                            : finding.severity === "Medium"
-                              ? "bg-amber-50 text-amber-600"
-                              : "bg-slate-100 text-slate-600"
-                        }`}>
-                          <CircleAlert size={18} />
+                    {findings.length === 0 ? (
+                      <div className="px-5 py-10 text-center">
+                        <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
+                          <BadgeCheck size={22} />
                         </div>
-                        <div className="min-w-0 flex-1">
-                          <p className="text-sm font-semibold">{finding.title}</p>
-                          <p className="mt-1 text-xs text-slate-500">{finding.category}</p>
-                        </div>
-                        <div className="flex items-center gap-2 pl-12 sm:pl-0">
-                          <span className={`rounded-full px-2.5 py-1 text-[10px] font-semibold ${
+                        <p className="mt-3 text-sm font-semibold">No findings detected</p>
+                        <p className="mt-1 text-xs text-slate-500">
+                          The seeded rules completed with no content issues. Run the analysis again to refresh this review.
+                        </p>
+                      </div>
+                    ) : (
+                      findings.map((finding) => (
+                        <button
+                          key={finding.id}
+                          onClick={() => setSelectedId(finding.id)}
+                          aria-pressed={selectedId === finding.id}
+                          className={`flex w-full flex-col gap-3 px-5 py-4 text-left transition sm:flex-row sm:items-center ${
+                            selectedId === finding.id
+                              ? "bg-blue-50/70"
+                              : "hover:bg-slate-50"
+                          }`}
+                        >
+                          <div className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${
                             finding.severity === "High"
-                              ? "bg-rose-50 text-rose-700"
-                              : "bg-amber-50 text-amber-700"
+                              ? "bg-rose-50 text-rose-600"
+                              : finding.severity === "Medium"
+                                ? "bg-amber-50 text-amber-600"
+                                : "bg-slate-100 text-slate-600"
                           }`}>
-                            {finding.severity}
-                          </span>
-                          <span className="max-w-[120px] truncate rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-medium text-slate-600">
-                            {finding.status}
-                          </span>
-                          <ArrowUpRight size={16} className="text-slate-400" />
-                        </div>
-                      </button>
-                    ))}
+                            <CircleAlert size={18} />
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm font-semibold">{finding.title}</p>
+                            <p className="mt-1 text-xs text-slate-500">{finding.category}</p>
+                          </div>
+                          <div className="flex items-center gap-2 pl-12 sm:pl-0">
+                            <span className={`rounded-full px-2.5 py-1 text-[10px] font-semibold ${
+                              finding.severity === "High"
+                                ? "bg-rose-50 text-rose-700"
+                                : "bg-amber-50 text-amber-700"
+                            }`}>
+                              {finding.severity}
+                            </span>
+                            <span className="max-w-[120px] truncate rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-medium text-slate-600">
+                              {finding.status}
+                            </span>
+                            <ArrowUpRight size={16} className="text-slate-400" />
+                          </div>
+                        </button>
+                      ))
+                    )}
                   </div>
                   <div className="border-t border-slate-100 bg-slate-50/60 px-5 py-3 text-xs text-slate-400">
                     Demo findings are generated from seeded content and sample rules.
@@ -467,7 +480,7 @@ export default function Home() {
                   </div>
                 </div>
 
-                {selectedFinding && (
+                {selectedFinding ? (
                   <div className="space-y-5 p-5">
                     <div>
                       <div className="mb-2 flex flex-wrap gap-2">
@@ -515,46 +528,123 @@ export default function Home() {
                     <div className="border-t border-slate-100 pt-4">
                       <button
                         onClick={approveReview}
-                        disabled={approved}
+                        disabled={!analyzed || approved || !selectedFinding}
                         className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#101b35] px-4 py-3 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-emerald-700"
                       >
                         {approved ? <Check size={17}/> : <CheckCircle2 size={17}/>}
                         {approved ? "Demo review approved" : "Approve demo review"}
                       </button>
                       <p className="mt-2 text-center text-[10px] leading-4 text-slate-400">
-                        Demonstration interaction only. Persistent reviewer records will be added with Supabase.
+                        {approved
+                          ? "Approved for this browser session. The decision cannot be repeated."
+                          : analyzed
+                            ? "Review the evidence, then approve this demo decision once."
+                            : "Run the sample analysis before approving this review."}
                       </p>
                     </div>
+                  </div>
+                ) : (
+                  <div className="px-5 py-10 text-center">
+                    <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-xl bg-slate-100 text-slate-500">
+                      <Search size={22} />
+                    </div>
+                    <p className="mt-3 text-sm font-semibold">No finding selected</p>
+                    <p className="mt-1 text-xs leading-5 text-slate-500">
+                      There are no stale finding details to review. Run the sample analysis again if you need to restore the seeded findings.
+                    </p>
                   </div>
                 )}
               </div>
             </div>
 
-            <div className="rounded-2xl bg-[#101b35] p-6 text-white md:flex md:items-center md:justify-between">
-              <div className="flex items-start gap-4">
-                <div className="rounded-xl bg-white/10 p-3">
-                  <FileCheck2 size={24}/>
+            <div className="overflow-hidden rounded-2xl bg-[#101b35] text-white">
+              <div className="p-6 md:flex md:items-center md:justify-between">
+                <div className="flex items-start gap-4">
+                  <div className="rounded-xl bg-white/10 p-3">
+                    <FileCheck2 size={24}/>
+                  </div>
+                  <div>
+                    <p className="text-lg font-bold">Evidence Passport</p>
+                    <p className="mt-1 max-w-xl text-sm leading-6 text-slate-300">
+                      A transparent record of checked claims, findings, evidence,
+                      and human review decisions.
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-lg font-bold">Evidence Passport</p>
-                  <p className="mt-1 max-w-xl text-sm leading-6 text-slate-300">
-                    A transparent record of checked claims, findings, evidence,
-                    and human review decisions.
-                  </p>
-                </div>
+                <button
+                  onClick={() => setPassportPreviewOpen((open) => !open)}
+                  aria-expanded={passportPreviewOpen}
+                  className="mt-5 inline-flex items-center gap-2 rounded-xl bg-white px-4 py-3 text-sm font-semibold text-[#101b35] transition hover:bg-blue-50 md:mt-0"
+                >
+                  <FileCheck2 size={16}/>
+                  {passportPreviewOpen ? "Close Preview" : "Preview Passport"}
+                  <ArrowUpRight size={15}/>
+                </button>
               </div>
-              <button
-                onClick={() => window.alert(
-                  approved
-                    ? "Passport preview: Northwind Q4 Campaign. Demo approval recorded in this session. Persistent passport generation is coming next."
-                    : "Complete the demo review first to preview the approval record."
-                )}
-                className="mt-5 inline-flex items-center gap-2 rounded-xl bg-white px-4 py-3 text-sm font-semibold text-[#101b35] transition hover:bg-blue-50 md:mt-0"
-              >
-                <FileCheck2 size={16}/>
-                Preview Passport
-                <ArrowUpRight size={15}/>
-              </button>
+
+              {passportPreviewOpen && (
+                <div className="border-t border-white/10 bg-white p-5 text-slate-900 md:p-6">
+                  {!approved ? (
+                    <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-4">
+                      <p className="text-sm font-semibold text-amber-900">Complete the review first</p>
+                      <p className="mt-1 text-xs leading-5 text-amber-800">
+                        Select a finding, review its evidence, and approve the demo review before previewing the passport.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      <div className="flex flex-col justify-between gap-3 border-b border-slate-100 pb-4 sm:flex-row sm:items-start">
+                        <div>
+                          <p className="text-[10px] font-bold uppercase tracking-wider text-blue-600">Evidence Passport Preview</p>
+                          <h3 className="mt-1 text-xl font-bold">{sampleContent.title}</h3>
+                        </div>
+                        <span className="inline-flex w-fit items-center gap-2 rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700">
+                          <CheckCircle2 size={14} />
+                          Approved
+                        </span>
+                      </div>
+
+                      <div className="grid gap-3 sm:grid-cols-3">
+                        <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                          <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Campaign</p>
+                          <p className="mt-2 text-sm font-semibold">{sampleContent.title}</p>
+                          <p className="mt-1 text-xs text-slate-500">Version {sampleContent.version}</p>
+                        </div>
+                        <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                          <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Findings</p>
+                          <p className="mt-2 text-2xl font-bold">{findings.length}</p>
+                          <p className="mt-1 text-xs text-slate-500">
+                            {highCount} high priority
+                          </p>
+                        </div>
+                        <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                          <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Approval outcome</p>
+                          <p className="mt-2 text-sm font-semibold text-emerald-700">Approved by demo reviewer</p>
+                          <p className="mt-1 text-xs text-slate-500">Browser-local decision</p>
+                        </div>
+                      </div>
+
+                      <div className="rounded-xl border border-blue-100 bg-blue-50/60 p-4">
+                        <p className="text-xs font-bold text-blue-800">Evidence summary</p>
+                        {findings.length === 0 ? (
+                          <p className="mt-2 text-xs leading-5 text-slate-600">
+                            No findings were generated, so no evidence exceptions were recorded.
+                          </p>
+                        ) : (
+                          <ul className="mt-2 space-y-2">
+                            {findings.map((finding) => (
+                              <li key={finding.id} className="text-xs leading-5 text-slate-600">
+                                <span className="font-semibold text-slate-800">{finding.title}:</span>{" "}
+                                {finding.evidence}
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             <footer className="flex flex-col justify-between gap-2 pb-3 text-xs text-slate-400 sm:flex-row">
