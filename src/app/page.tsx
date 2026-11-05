@@ -33,16 +33,16 @@ type Finding = {
 };
 
 const sampleContent = {
-  title: "Q4 Campaign",
+  title: "Northwind Q4 Campaign",
   version: "v3",
   text: `
-    Analytics helps customers make better business decisions.
-    Our platform reduces costs by 80%.
-    Connects to 5 data sources.
+    Northwind Analytics helps customers make better business decisions.
+    Northwind Insights is the world's fastest analytics platform.
+    It connects to 5 data sources.
     Our clients use our platform to improve reporting.
   `,
   image: {
-    contrastRatio: 2.8,
+    contrastRatio: 2.5,
     altText: "",
   },
 };
@@ -111,7 +111,7 @@ function analyzeText(text: string, isSample: boolean): Finding[] {
 
   if (content.includes("80%")) {
     findings.push({
-      id: 1,
+      id: 6,
       title: "Unsupported savings claim",
       category: "Claim verification",
       severity: "High",
@@ -130,6 +130,31 @@ function analyzeText(text: string, isSample: boolean): Finding[] {
     });
   }
 
+  if (
+    content.includes("world's fastest") ||
+    content.includes("world\u2019s fastest") ||
+    content.includes("world fastest")
+  ) {
+    findings.push({
+      id: 1,
+      title: "Unsupported superlative claim",
+      category: "Claim verification",
+      severity: "High",
+      status: "Unverified",
+      claim: extractClaim(
+        text,
+        "world's fastest",
+        "Northwind Insights is the world's fastest analytics platform."
+      ),
+      explanation:
+        "The campaign uses a market-wide superlative, but the approved claim library contains no dated third-party evidence supporting it.",
+      evidence:
+        "Claim Policy 3.2 · Superlatives require dated third-party evidence. No matching approved record is in the claim library.",
+      recommendation:
+        "Remove the superlative or replace it with a supported benchmark and cite the approved evidence.",
+    });
+  }
+
   if (content.includes("5 data sources")) {
     findings.push({
       id: 2,
@@ -143,9 +168,9 @@ function analyzeText(text: string, isSample: boolean): Finding[] {
         "Connects to 5 data sources."
       ),
       explanation:
-        "The campaign says 5 integrations, while the current approved fact sheet specifies 12 supported data sources.",
+        "The Northwind campaign says 5 integrations, while Northwind Product Fact Sheet v3.2 specifies 12 supported data sources.",
       evidence:
-        "Product Fact Sheet · Version 2 · Approved fact: 12 data sources.",
+        "Northwind Product Fact Sheet · v3.2 · Reviewed this quarter · Approved fact: 12 data sources.",
       recommendation:
         "Replace 5 with 12 after confirming the current approved product fact sheet.",
     });
@@ -164,9 +189,9 @@ function analyzeText(text: string, isSample: boolean): Finding[] {
         "Our clients use our platform."
       ),
       explanation:
-        "The approved brand terminology uses customers rather than clients.",
+        "The Northwind brand terminology guide uses customers rather than clients, and Northwind Insights is the approved product name.",
       evidence:
-        "Brand Guide · Terminology rule: use customers, not clients.",
+        "Northwind Brand Guide · Terminology rule: use customers, not clients; approved product name: Northwind Insights.",
       recommendation:
         "Replace clients with customers.",
     });
@@ -181,11 +206,11 @@ function analyzeText(text: string, isSample: boolean): Finding[] {
       status: "Needs correction",
       claim: "Campaign banner text contrast",
       explanation:
-        `The sample banner has a contrast ratio of ${sampleContent.image.contrastRatio}:1. Normal text needs at least 4.5:1 for WCAG AA.`,
+        `The Northwind banner has a contrast ratio of ${sampleContent.image.contrastRatio}:1. Normal text needs at least 4.5:1 for WCAG AA.`,
       evidence:
-        "WCAG 2.2 AA contrast requirement for normal text: 4.5:1.",
+        "WCAG 2.2 AA 1.4.3 and Northwind Brand Guide 5.1 · Normal text requires 4.5:1 contrast.",
       recommendation:
-        "Darken the text or adjust the banner background, then recalculate the contrast ratio.",
+        "Use approved dark grey #374151 against white, about 10:1, then recalculate the contrast ratio.",
     });
   }
 
@@ -200,9 +225,9 @@ function analyzeText(text: string, isSample: boolean): Finding[] {
       explanation:
         "The campaign banner has no alternative text. Screen-reader users may miss its meaningful content.",
       evidence:
-        "Accessibility rule: meaningful images should have an appropriate text alternative.",
+        "WCAG 2.2 AA 1.1.1 and Northwind Brand Guide 7.4 · Meaningful images need an appropriate text alternative.",
       recommendation:
-        "Add concise alternative text describing the information conveyed by the banner.",
+        'Add concise alternative text such as: "Dashboard showing monthly revenue trends."',
     });
   }
 
@@ -403,7 +428,7 @@ export default function Home() {
                 <Activity size={19} />
               </div>
               <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-semibold">Campaign workspace</p>
+                <p className="truncate text-sm font-semibold">Northwind Analytics</p>
                 <p className="text-xs text-slate-400">Public review</p>
               </div>
             </div>
@@ -447,7 +472,7 @@ export default function Home() {
         <section className="min-w-0 flex-1">
           <header className="sticky top-0 z-10 flex h-[76px] items-center justify-between border-b border-slate-200 bg-white/95 px-5 backdrop-blur md:px-8">
             <div>
-              <p className="text-xs text-slate-400">Campaign / Review workspace</p>
+              <p className="text-xs text-slate-400">Northwind Analytics / Q4 Campaign</p>
               <h1 className="text-lg font-bold">Content Governance</h1>
             </div>
 
@@ -965,7 +990,7 @@ export default function Home() {
 
             <footer className="flex flex-col justify-between gap-2 pb-3 text-xs text-slate-400 sm:flex-row">
               <p>© 2026 Inkloom AI · Every claim checked, every asset on-brand.</p>
-              <p>Campaign governance workspace</p>
+              <p>Northwind campaign governance workspace</p>
             </footer>
           </div>
         </section>
