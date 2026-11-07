@@ -1,36 +1,95 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Inkloom AI
 
-## Getting Started
+Inkloom is a public evidence-backed content governance demo. It analyzes the Northwind Q4 campaign, records finding dispositions and reviewer decisions, and generates a **cryptographically signed Trust Passport** with an immutable audit trail.
 
-First, run the development server:
+## 🎯 Judge in 2 Minutes (Hackathon Demo)
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+**Live:** https://inkloom-ai-three.vercel.app
+
+### Quick Start
+1. **Open** the live demo → Click **"Run Governance Check"** (uses Northwind sample)
+2. **Watch** 7 findings appear instantly — superlative claims, outdated specs, brand terminology, accessibility issues
+3. **Click** "Accept" on all 7 findings (top-right of each card)
+4. **Click** "Approve" in the Review tab → Enter reviewer name & reason
+5. **See** the **signed Trust Passport** appear with Ed25519 signature
+6. **Click** "Verify" button → Opens public `/verify/[runId]` page
+7. **Click** "Verify Signature" → Cryptographic proof the passport hasn't been tampered with
+
+### Demo Modes (add to URL)
+- `?demo=perfect` — Pre-approved campaign, ready to verify
+- `?demo=rejected` — Campaign with violations, shows rejection flow  
+- `?demo=pending` — Campaign awaiting review
+
+### Differentiator Features (Round 2)
+| Feature | Why It Matters |
+|---------|----------------|
+| **Hybrid AI: LLM claim extraction + deterministic rules** | No hallucination — claims extracted by Claude, evaluated by code |
+| **Evidence-backed verification** | 5 pre-seeded approved records (policies, fact sheets, brand guides, WCAG) |
+| **Ed25519 signed Trust Passports** | Cryptographic integrity — anyone can verify without server trust |
+| **Public verification page** | QR-free, stateless, runs entirely in browser with embedded public key |
+| **Optimistic locking** | Concurrent reviewer actions handled safely with version conflicts |
+| **Corrected campaign text** | Auto-generates compliant copy from accepted/edited findings |
+
+## Architecture
+
+```text
+Public Next.js 16 (App Router, Turbopack)
+  -> API Routes: analyze, extract-claims, findings/action, review, passport
+  -> Supabase PostgreSQL + pgvector (evidence library)
+  -> Anthropic Claude (structured claim extraction via tool use)
+  -> @noble/ed25519 (Ed25519 signatures on canonical JSON)
+  -> Vercel deployment
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Local setup
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+npm install
+npm run dev
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+The application works without credentials by using a server-side memory fallback. Supabase and Claude credentials enable durable persistence and AI-assisted verification.
 
-## Learn More
+Copy `.env.example` to `.env.local` and configure:
 
-To learn more about Next.js, take a look at the following resources:
+```text
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+ANTHROPIC_API_KEY=your-anthropic-api-key
+ANTHROPIC_MODEL=claude-sonnet-4-5-20250929
+PASSPORT_SIGNING_KEY=<64-char hex Ed25519 private key>
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Never expose `SUPABASE_SERVICE_ROLE_KEY`, `ANTHROPIC_API_KEY`, or `PASSPORT_SIGNING_KEY` with a `NEXT_PUBLIC_` prefix.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Supabase
 
-## Deploy on Vercel
+Run the migration in `supabase/migrations/20261105_governance_runs.sql`. It creates governance run storage and an approved evidence library with pgvector support.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## API routes
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- `POST /api/analyze` — Full pipeline: extract claims → evaluate rules → verify evidence
+- `POST /api/extract-claims` — LLM-powered claim extraction (works on arbitrary marketing text)
+- `POST /api/findings/[id]/action` — Accept/edit/dispute with optimistic locking
+- `POST /api/review` — Approve/reject/changes_requested → returns signed passport on approval
+- `GET /api/passport/[contentId]` — Unsigned passport; `?signed=true&format=json` for signed
+- `GET /api/audit/[contentId]` — Full audit trail
+- `GET /verify/[runId]` — Public verification page (client-side signature check)
+
+## Key Files
+
+| Path | Purpose |
+|------|---------|
+| `src/lib/governance-engine.ts` | Deterministic rule evaluation (6 categories) |
+| `src/app/api/extract-claims/route.ts` | LLM claim extraction with tool use |
+| `src/lib/signing.ts` | Ed25519 sign/verify, canonical JSON |
+| `src/app/verify/[runId]/page.tsx` | Public verification page |
+| `src/app/api/review/route.ts` | Review decision + passport signing |
+| `src/lib/governance-store.ts` | In-memory + Supabase persistence |
+
+## Round 3 Roadmap (3 Features)
+
+1. **Evidence Library UI** — CRUD for approved evidence records with versioning
+2. **Multi-campaign Workspace** — Dashboard to manage multiple content IDs
+3. **Policy-as-Code DSL** — Write governance rules in YAML/JSON, not TypeScript
