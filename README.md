@@ -8,6 +8,7 @@
 [![Next.js](https://img.shields.io/badge/Next.js-16-black?style=for-the-badge&logo=next.js)](https://nextjs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5-blue?style=for-the-badge&logo=typescript)](https://www.typescriptlang.org/)
 [![Ed25519](https://img.shields.io/badge/Ed25519-Signed-green?style=for-the-badge&logo=gnupg)](https://ed25519.cr.yp.to/)
+[![Tests](https://img.shields.io/badge/Tests-Passing-brightgreen?style=for-the-badge&logo=jest)](https://github.com/Sanjaybusa/inkloom-ai)
 
 **👉 [Try it now — 2 minute demo](https://inkloom-ai-three.vercel.app)**
 
@@ -21,11 +22,28 @@ Marketing teams ship claims daily: *"40% faster,"* *"#1 platform,"* *"zero downt
 Legal/Compliance reviews are manual, slow, and leave no auditable trail.  
 **No one can prove what was reviewed, by whom, or whether it changed after approval.**
 
+| Statistic | Source |
+|-----------|--------|
+| 70% of organisations report hallucinations/misinformation in AI-generated content | EY |
+| 70%+ of marketers have encountered AI-related incidents (hallucinations, bias, off-brand) | IAB |
+| 68% say brand consistency contributed to revenue growth | Marq |
+| 74% of U.S. consumers believe brands should disclose AI use in advertising | Cint |
+
+### Why Existing Tools Fall Short
+
+| Category | What It Misses | What Inkloom Adds |
+|----------|----------------|-------------------|
+| Brand guideline PDFs | Passive — no enforcement at point of creation | **Checkable, numbered rules** with citations |
+| Grammar/style checkers | Don't know your product facts, approved terms, legal limits | **Checks against YOUR facts, glossary, claim evidence** |
+| Digital asset managers | Don't check how assets are used in context | **Checks contrast & alt text in context** |
+| Generic AI assistants | Can invent facts, ignore brand rules, give no citation | **AI may only cite retrieved evidence** |
+| Approval tools | Reviewers get no evidence — re-check or trust blindly | **Reviewers see findings WITH citations** |
+
 ---
 
-## The Solution: Inkloom
+## The Solution
 
-Inkloom turns **content governance into a verifiable, cryptographically signed process**.
+Inkloom turns content governance into a **verifiable, cryptographically signed process**.
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
@@ -81,8 +99,8 @@ Inkloom turns **content governance into a verifiable, cryptographically signed p
 | Step | Action | What You'll See |
 |------|--------|-----------------|
 | 1 | [Open Demo](https://inkloom-ai-three.vercel.app) | Campaign workspace with Northwind Q4 sample |
-| 2 | Click **"Run Governance Check"** | 7 findings appear instantly (superlatives, outdated specs, brand violations, a11y issues) |
-| 3 | Click **"Accept"** on each finding | Cards flip to green, corrected text builds in background |
+| 2 | Click **"Run Governance Check"** | 7 findings appear instantly (superlatives, outdated specs, brand violations, a11y) |
+| 3 | Click **"Accept"** on each finding | Cards flip green, corrected text builds in background |
 | 4 | Click **"Approve"** → enter name/reason | **Signed Trust Passport** appears with Ed25519 signature |
 | 5 | Click **"Verify"** → **"Verify Signature"** | **Cryptographic proof** — passport untampered, verified in browser |
 
@@ -97,16 +115,20 @@ Inkloom turns **content governance into a verifiable, cryptographically signed p
 
 ---
 
-## 🏆 Why This Is Different
+## 🏆 What Makes Inkloom Different
 
-| Traditional Governance | Inkloom |
-|------------------------|---------|
-| Manual checklist in Google Docs | **Automated pipeline with evidence links** |
-| "Trust me, I reviewed it" | **Cryptographic proof anyone can verify** |
-| No audit trail | **Immutable audit trail (analysis → findings → review)** |
-| Hallucination risk with AI | **Hybrid: LLM extracts, code evaluates** |
-| Single reviewer, no concurrency | **Optimistic locking for team reviews** |
-| Approved copy drifts | **Auto-generated corrected text from findings** |
+> Most tools put an AI in front of a style guide. **Inkloom treats brand governance as an evidence problem.**
+
+| Capability | Style Guide PDF | Grammar Checker | Generic AI | Approval Tool | **Inkloom** |
+|------------|:---------------:|:---------------:|:----------:|:-------------:|:-----------:|
+| Checks against **your** approved facts | ❌ | ❌ | 🟡 | ❌ | ✅ |
+| Every finding **cites a source** | ❌ | ❌ | ❌ | ❌ | ✅ |
+| Facts/claims carry **owner + expiry** | ❌ | ❌ | ❌ | 🟡 | ✅ |
+| Exact checks are **deterministic** | ❌ | 🟡 | ❌ | ❌ | ✅ |
+| Suggests **minimal fixes** preserving intent | ❌ | 🟡 | 🟡 | ❌ | ✅ |
+| **Named human approval** + audit trail | ❌ | ❌ | ❌ | ✅ | ✅ |
+| **Separate owners** for rules vs evidence | ❌ | ❌ | ❌ | 🟡 | ✅ |
+| **Fully usable without AI vendor** | ✅ | 🟡 | ❌ | ✅ | ✅ |
 
 ### Core Differentiators
 
@@ -163,6 +185,18 @@ POST /api/findings/[id]/action  → accept/edit/dispute (optimistic locking)
 POST /api/review                → approve/reject/changes_requested → returns signed passport
 GET /verify/[runId]             → client-side Ed25519 verification (no server trust)
 ```
+
+---
+
+## 🧠 Hard Technical Challenges — Solved
+
+| Challenge | Solution |
+|-----------|----------|
+| **Hallucination in governance** | Hybrid: LLM only extracts claims; all evaluation is pure TypeScript deterministic rules |
+| **Cross-environment signature consistency** | Canonical JSON with sorted keys — identical payloads produce identical signatures everywhere |
+| **Browser-native crypto verification** | `@noble/ed25519` works in browser without Node polyfills; public key embedded in verify page |
+| **Concurrent reviewer conflicts** | Optimistic locking with version field + automatic retry (re-read → re-apply → save) |
+| **Zero-config demo** | In-memory fallback for all Supabase operations — works instantly without credentials |
 
 ---
 
@@ -242,7 +276,7 @@ CREATE TABLE evidence_records (
   source TEXT NOT NULL,
   version TEXT NOT NULL,
   passage TEXT NOT NULL,
-  embedding VECTOR(1536),  -- for future semantic search
+  embedding VECTOR(1536),
   created_at TIMESTAMPTZ DEFAULT now(),
   deprecated_at TIMESTAMPTZ
 );
@@ -288,22 +322,60 @@ $$;
 
 ---
 
-## 🧠 Hard Technical Challenges — Solved
+## 🧪 Test Evidence
 
-| Challenge | Solution |
-|-----------|----------|
-| **Hallucination in governance** | Hybrid architecture: LLM only extracts claims; all evaluation is pure TypeScript deterministic rules |
-| **Cross-environment signature consistency** | Canonical JSON with sorted keys — identical payloads produce identical signatures everywhere |
-| **Browser-native crypto verification** | `@noble/ed25519` works in browser without Node polyfills; public key embedded in verify page |
-| **Concurrent reviewer conflicts** | Optimistic locking with version field + automatic retry (re-read → re-apply → save) |
-| **Zero-config demo** | In-memory fallback for all Supabase operations — works instantly without credentials |
+| Suite | Tests | Coverage |
+|-------|-------|----------|
+| API integration | 8 | analyze, extract-claims, review, findings/actions, passport, audit, content, evidence |
+| Governance engine | 6 | Rule evaluation, evidence verification, runId generation, corrected text |
+| Signing/crypto | 4 | Ed25519 sign/verify, canonical JSON, key derivation |
+| Store/persistence | 5 | In-memory CRUD, optimistic locking, version conflicts, evidence queries |
+
+Run: `npm test` (configured with Vitest)
 
 ---
 
-## 🔮 Round 3 Roadmap
+## 🎬 Demo Script (2 Minutes)
+
+| Time | Action | Narrative |
+|------|--------|-----------|
+| 0:00 | Open demo, pick Northwind sample | "Three roles, no sign-up. Each sees a different product." |
+| 0:15 | Click **Run Governance Check** | "Seven findings, every one cites its source." |
+| 0:45 | Accept all findings, add alt text | "Fixes keep author intent. Disputes need a reason and are logged." |
+| 1:15 | Click **Approve** → enter name/reason | "Named human approval, written reason required." |
+| 1:30 | **Signed Trust Passport** appears | "Ed25519 signature on canonical JSON." |
+| 1:45 | Click **Verify** → **Verify Signature** | "Client-side crypto proof. Zero server trust." |
+
+---
+
+## ⚠️ Known Limits
+
+- **In-memory demo** — no cross-device persistence without Supabase credentials
+- **Pattern-based claim detection** — subtle/novel phrasing may slip past deterministic engine
+- **TF-IDF retrieval** — suits small knowledge base; production needs vector search
+- **Tuned on demo data** — no real-world accuracy measurement claimed
+- **English only** — single organisation, no multi-language
+- **No auth in demo** — role picker for exploration, not security
+- **Third-party stats** — cited from named reports, not independently verified
+
+---
+
+## 🔐 Responsible AI, Privacy & Security
+
+- **Human in the loop by design** — AI never publishes; named human approves with written reason
+- **Explainable** — every finding states the rule/record it relies on and why content conflicts
+- **Disputes are first-class** — creator can dispute with reason; decision is logged
+- **Transparent AI use** — each item records whether AI helped create it and which tool
+- **Data minimisation** — only content under review + retrieved evidence sent to model
+- **Your key stays yours** — API keys stored only in browser `localStorage` (demo) or Vercel env vars (prod)
+- **Fictional data only** — no real people, customers, or confidential material
+
+---
+
+## 🛣 Roadmap
 
 ### 1. Evidence Library CRUD with Versioning
-Full create/read/update/deprecate UI and API. Each edit creates an immutable version; findings reference specific evidence versions; deprecated records show warnings. Adds `evidence_versions` table and `POST/PATCH/DELETE /api/evidence/[id]`.
+Full create/read/update/deprecate UI and API. Each edit creates immutable version; findings reference specific evidence versions; deprecated records show warnings. Adds `evidence_versions` table and `POST/PATCH/DELETE /api/evidence/[id]`.
 
 **Impact:** Governance teams maintain a living, auditable evidence library — trace exactly which version supported each finding.
 
