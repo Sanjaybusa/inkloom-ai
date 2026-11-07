@@ -24,7 +24,7 @@ Our clients use our platform to improve reporting.`;
 // Generate with: node -e "const {ed25519}=require('@noble/ed25519'); const {sha512}=require('@noble/hashes/sha512'); ed25519.etc.sha512=(...a)=>sha512(...a); const pk=ed25519.utils.randomPrivateKey(); console.log(Buffer.from(ed25519.getPublicKey(pk)).toString('hex'))"
 // Embedded public key for client-side verification
 // Replace this with your actual public key from keypair generation
-const EMBEDDED_PUBLIC_KEY = "1f6a59d964cfdf15e83abc64a189205f8c3086d2d46dc81371eb5ab30ce4ca1c";
+const EMBEDDED_PUBLIC_KEY = "2528d6f057c77a2331ae533d4c96dd6efd207b284b8c7d1e8ec3364ca6b073fe";
 const USE_EMBEDDED_KEY = true; // Set to false if using fallback to passport's public key
 
 type Passport = {

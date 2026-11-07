@@ -8,7 +8,6 @@
 [![Next.js](https://img.shields.io/badge/Next.js-16-black?style=for-the-badge&logo=next.js)](https://nextjs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5-blue?style=for-the-badge&logo=typescript)](https://www.typescriptlang.org/)
 [![Ed25519](https://img.shields.io/badge/Ed25519-Signed-green?style=for-the-badge&logo=gnupg)](https://ed25519.cr.yp.to/)
-[![Tests](https://img.shields.io/badge/Tests-Passing-brightgreen?style=for-the-badge&logo=jest)](https://github.com/Sanjaybusa/inkloom-ai)
 
 **👉 [Try it now — 2 minute demo](https://inkloom-ai-three.vercel.app)**
 
@@ -153,7 +152,7 @@ Inkloom turns content governance into a **verifiable, cryptographically signed p
 │ Language             │ TypeScript (strict mode)                   │
 │ Styling              │ Tailwind CSS + Framer Motion               │
 │ Database             │ Supabase PostgreSQL + pgvector             │
-│ AI                   │ Anthropic Claude Sonnet 4.5                │
+│ AI                   │ Anthropic Claude (claude-sonnet-4-5-20250929) │
 │ Cryptography         │ @noble/ed25519 + @noble/hashes/sha512      │
 │ Validation           │ Zod (runtime + compile-time)               │
 │ Deployment           │ Vercel (edge-ready)                        │
@@ -249,45 +248,94 @@ console.log('PUBLIC_KEY (embed in verify page):', Buffer.from(pub).toString('hex
 Run `supabase/migrations/20261105_governance_runs.sql`:
 
 ```sql
+-- Enable pgvector extension
+create extension if not exists vector;
+
 -- Governance runs with JSONB findings, audit trail, review decisions
-CREATE TABLE governance_runs (
-  id TEXT PRIMARY KEY,
-  content_id TEXT NOT NULL,
-  campaign_title TEXT,
-  campaign_text TEXT,
-  version INT DEFAULT 1,
-  status TEXT CHECK (status IN ('analyzed','approved','rejected','changes_requested')),
-  findings JSONB NOT NULL DEFAULT '[]',
-  review JSONB,
-  audit JSONB NOT NULL DEFAULT '[]',
-  rules_version TEXT,
-  evidence_version TEXT,
-  claims_checked INT,
-  ai_assistance BOOLEAN,
-  corrected_campaign_text TEXT,
-  analyzed_at TIMESTAMPTZ,
-  updated_at TIMESTAMPTZ
+create table if not exists public.governance_runs (
+  id text primary key,
+  content_id text not null,
+  campaign_title text not null,
+  campaign_text text not null,
+  corrected_campaign_text text,
+  version integer not null default 1,
+  status text not null,
+  analyzed_at timestamptz not null,
+  updated_at timestamptz not null,
+  rules_version text not null,
+  evidence_version text not null,
+  claims_checked integer not null default 0,
+  findings jsonb not null default '[]'::jsonb,
+  review jsonb not null default '{}'::jsonb,
+  audit_events jsonb not null default '[]'::jsonb,
+  ai_assistance boolean not null default false
 );
+
+create index if not exists governance_runs_content_id_idx
+  on public.governance_runs (content_id, updated_at desc);
 
 -- Approved evidence library with pgvector embeddings
-CREATE TABLE evidence_records (
-  id TEXT PRIMARY KEY,
-  category TEXT NOT NULL,
-  source TEXT NOT NULL,
-  version TEXT NOT NULL,
-  passage TEXT NOT NULL,
-  embedding VECTOR(1536),
-  created_at TIMESTAMPTZ DEFAULT now(),
-  deprecated_at TIMESTAMPTZ
+create table if not exists public.evidence_records (
+  id text primary key,
+  category text not null,
+  source text not null,
+  version text not null,
+  passage text not null,
+  approved boolean not null default true,
+  embedding vector(1536),
+  created_at timestamptz not null default now()
 );
 
--- Vector similarity search (scaffolded)
-CREATE FUNCTION match_evidence(query_embedding VECTOR(1536), match_count INT DEFAULT 5)
-RETURNS SETOF evidence_records LANGUAGE sql AS $$
-  SELECT * FROM evidence_records
-  WHERE deprecated_at IS NULL
-  ORDER BY embedding <=> query_embedding
-  LIMIT match_count;
+-- Pre-seeded evidence records (upsert on conflict)
+insert into public.evidence_records (id, category, source, version, passage, approved)
+values
+  ('claim-policy-superlatives', 'Claim verification', 'Claim Policy 3.2', '1.0',
+   'Market-wide superlatives require dated third-party evidence before publication.', true),
+  ('northwind-integrations', 'Fact verification', 'Northwind Product Fact Sheet', 'v3.2',
+   'Northwind Insights supports 12 data sources in the currently approved product fact sheet.', true),
+  ('northwind-terminology', 'Brand consistency', 'Northwind Brand Guide', '7.1',
+   'Use customers rather than clients and use Northwind Insights as the approved product name.', true),
+  ('wcag-contrast', 'Accessibility', 'WCAG 2.2', '1.4.3',
+   'Normal text must have a contrast ratio of at least 4.5:1.', true),
+  ('wcag-alt-text', 'Accessibility', 'WCAG 2.2', '1.1.1',
+   'Meaningful images require concise and appropriate alternative text.', true)
+on conflict (id) do update set
+  category = excluded.category,
+  source = excluded.source,
+  version = excluded.version,
+  passage = excluded.passage,
+  approved = excluded.approved;
+
+-- Vector similarity search (scaffolded for future semantic search)
+create or replace function public.match_evidence(
+  query_embedding vector(1536),
+  match_count integer default 5,
+  match_category text default null
+)
+returns table (
+  id text,
+  category text,
+  source text,
+  version text,
+  passage text,
+  similarity float
+)
+language sql
+stable
+as $$
+  select
+    evidence_records.id,
+    evidence_records.category,
+    evidence_records.source,
+    evidence_records.version,
+    evidence_records.passage,
+    1 - (evidence_records.embedding <=> query_embedding) as similarity
+  from public.evidence_records
+  where evidence_records.approved = true
+    and evidence_records.embedding is not null
+    and (match_category is null or evidence_records.category = match_category)
+  order by evidence_records.embedding <=> query_embedding
+  limit greatest(match_count, 1);
 $$;
 ```
 
@@ -319,19 +367,6 @@ $$;
 | `src/app/evidence/page.tsx` | Evidence Library (search, filter, expand, cross-refs) |
 | `src/components/ui/diff-view.tsx` | Side-by-side original vs corrected campaign diff |
 | `src/components/ui/judge-scorecard.tsx` | Visual metrics summary for judges |
-
----
-
-## 🧪 Test Evidence
-
-| Suite | Tests | Coverage |
-|-------|-------|----------|
-| API integration | 8 | analyze, extract-claims, review, findings/actions, passport, audit, content, evidence |
-| Governance engine | 6 | Rule evaluation, evidence verification, runId generation, corrected text |
-| Signing/crypto | 4 | Ed25519 sign/verify, canonical JSON, key derivation |
-| Store/persistence | 5 | In-memory CRUD, optimistic locking, version conflicts, evidence queries |
-
-Run: `npm test` (configured with Vitest)
 
 ---
 
