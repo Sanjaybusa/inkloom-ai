@@ -1,9 +1,0 @@
-# Hackathon demo initiative; order is build order.
-# next_id = 7
-
-[[epic]]
-id = 1
-slug = "epic-judge-ready-demo"
-title = "Judge-ready public demo"
-description = "A public Inkloom demo completes the analysis, evidence, approval, passport, and deployment path without login."
-covers = ["R1", "R2", "R3", "R4", "R5"]
