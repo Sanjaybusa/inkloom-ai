@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { motion } from "framer-motion";
+import { useEffect, useState, useMemo } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   ShieldCheck,
   FileCheck2,
@@ -18,6 +18,14 @@ import {
   BarChart2,
   GitBranch,
   X,
+  Clock,
+  RotateCcw,
+  Minus,
+  Plus,
+  Play,
+  Pause,
+  SkipBack,
+  SkipForward,
 } from "lucide-react";
 import Link from "next/link";
 import { QRCodeSVG } from "qrcode.react";
@@ -50,19 +58,38 @@ type Passport = {
   generatedAt: string;
 };
 
-export default function PublicPassport({ params }: { params: Promise<{ runId: string }> }) {
+type RunVersion = {
+  version: number;
+  runId: string;
+  analyzedAt: string;
+  findings: Finding[];
+  status: string;
+  correctedCampaignText?: string;
+  claimsChecked: number;
+};
+
+export default function PublicPassport({ params }: { params: Promise<{ runId: string; finding?: string }> }) {
   const [run, setRun] = useState<GovernanceRun | null>(null);
   const [passport, setPassport] = useState<Passport | null>(null);
   const [loading, setLoading] = useState(true);
+  const [notFound, setNotFound] = useState(false);
   const [showAudit, setShowAudit] = useState(false);
   const [showDiff, setShowDiff] = useState(false);
   const [showScorecard, setShowScorecard] = useState(false);
   const [runId, setRunId] = useState("");
+  const [highlightFindingId, setHighlightFindingId] = useState<string | null>(null);
+
+  // Time Travel state
+  const [runHistory, setRunHistory] = useState<RunVersion[]>([]);
+  const [selectedVersion, setSelectedVersion] = useState<number | null>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [historyLoading, setHistoryLoading] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
-      const { runId: id } = await params;
+      const { runId: id, finding } = await params;
       setRunId(id);
+      if (finding) setHighlightFindingId(finding);
       try {
         // First try to get run by ID
         let runRes = await fetch(`/api/content/${id}`);
@@ -78,18 +105,78 @@ export default function PublicPassport({ params }: { params: Promise<{ runId: st
         }
         if (runData) {
           setRun(runData);
+          setSelectedVersion(runData.version);
           // Fetch passport using the run's contentId
           const passportRes = await fetch(`/api/passport/${encodeURIComponent(runData.contentId)}?format=json`);
           if (passportRes.ok) setPassport(await passportRes.json());
+
+          // Fetch run history for Time Travel
+          fetchRunHistory(runData.contentId);
+        } else {
+          setNotFound(true);
         }
       } catch (error) {
         console.error("Failed to fetch passport:", error);
+        setNotFound(true);
       } finally {
         setLoading(false);
       }
     };
     fetchData();
   }, [params]);
+
+  // Fetch run history for Time Travel slider
+  const fetchRunHistory = async (contentId: string) => {
+    setHistoryLoading(true);
+    try {
+      const res = await fetch(`/api/campaigns/${contentId}/runs`);
+      if (res.ok) {
+        const data = await res.json();
+        // Sort by version ascending for slider
+        const sorted = [...data].sort((a: RunVersion, b: RunVersion) => a.version - b.version);
+        setRunHistory(sorted);
+      }
+    } catch (error) {
+      console.error("Failed to fetch run history:", error);
+    } finally {
+      setHistoryLoading(false);
+    }
+  };
+
+  // Load selected version's data
+  const loadVersion = async (version: number) => {
+    const targetRun = runHistory.find(r => r.version === version);
+    if (targetRun) {
+      setSelectedVersion(version);
+      // Fetch full run data for this version
+      try {
+        const res = await fetch(`/api/content/${targetRun.runId}`);
+        if (res.ok) {
+          const runData = await res.json();
+          setRun(runData);
+          const passportRes = await fetch(`/api/passport/${encodeURIComponent(runData.contentId)}?format=json`);
+          if (passportRes.ok) setPassport(await passportRes.json());
+        }
+      } catch (error) {
+        console.error("Failed to load version:", error);
+      }
+    }
+  };
+
+  // Auto-play through versions
+  useEffect(() => {
+    if (!isPlaying || runHistory.length === 0) return;
+
+    const versions = runHistory.map(r => r.version).sort((a, b) => a - b);
+    const currentIndex = versions.indexOf(selectedVersion ?? versions[versions.length - 1]);
+    const nextIndex = (currentIndex + 1) % versions.length;
+
+    const timer = setTimeout(() => {
+      loadVersion(versions[nextIndex]);
+    }, 1500);
+
+    return () => clearTimeout(timer);
+  }, [isPlaying, selectedVersion, runHistory]);
 
   if (loading) {
     return (
@@ -109,8 +196,8 @@ export default function PublicPassport({ params }: { params: Promise<{ runId: st
           <FileCheck2 className="mx-auto text-slate-300" size={64} />
           <h1 className="mt-4 text-2xl font-bold text-slate-900">Passport Not Found</h1>
           <p className="mt-2 text-slate-500">The requested Trust Passport could not be found.</p>
-          <Link href="/" className="mt-6 inline-flex items-center gap-2 text-blue-600 font-semibold hover:underline">
-            <ChevronLeft size={16} /> Back to Workspace
+          <Link href="/workspace" className="mt-6 inline-flex items-center gap-2 text-blue-600 font-semibold hover:underline">
+            <ChevronLeft size={16} /> Open Workspace
           </Link>
         </div>
       </div>
@@ -139,6 +226,7 @@ export default function PublicPassport({ params }: { params: Promise<{ runId: st
       case "Brand violation": return "bg-violet-100 text-violet-700";
       case "Needs correction": return "bg-blue-100 text-blue-700";
       case "Disputed": return "bg-slate-100 text-slate-700";
+      case "Needs Human Review": return "bg-amber-100 text-amber-800";
       default: return "bg-slate-100 text-slate-700";
     }
   };
@@ -206,7 +294,7 @@ export default function PublicPassport({ params }: { params: Promise<{ runId: st
           </div>
           <div className="flex items-center gap-2">
             <Link
-              href={`/?run=${run.id}`}
+              href={`/workspace?run=${run.id}`}
               className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-100"
             >
               <ExternalLink size={14} /> Open in Workspace
@@ -233,6 +321,172 @@ export default function PublicPassport({ params }: { params: Promise<{ runId: st
       </header>
 
       <div className="mx-auto max-w-[1500px] space-y-6 p-4 md:p-8">
+        {/* Time Travel Slider */}
+        {runHistory.length > 1 && (
+          <motion.section
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
+          >
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <RotateCcw className="text-blue-600" size={20} />
+                <h2 className="font-bold">Time Travel — Compliance Evolution</h2>
+                <span className="px-2 py-0.5 rounded bg-blue-50 text-blue-700 text-[10px] font-mono">
+                  {runHistory.length} versions
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => {
+                    setIsPlaying(!isPlaying);
+                    if (!isPlaying && selectedVersion !== null) {
+                      const versions = runHistory.map(r => r.version).sort((a, b) => a - b);
+                      const currentIndex = versions.indexOf(selectedVersion);
+                      const nextIndex = (currentIndex + 1) % versions.length;
+                      loadVersion(versions[nextIndex]);
+                    }
+                  }}
+                  className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50"
+                >
+                  {isPlaying ? <Pause size={14} /> : <Play size={14} />}
+                  {isPlaying ? "Pause" : "Play"}
+                </button>
+                <button
+                  onClick={() => {
+                    const versions = runHistory.map(r => r.version).sort((a, b) => a - b);
+                    const currentIndex = versions.indexOf(selectedVersion ?? versions[versions.length - 1]);
+                    const prevIndex = (currentIndex - 1 + versions.length) % versions.length;
+                    loadVersion(versions[prevIndex]);
+                  }}
+                  className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50"
+                >
+                  <SkipBack size={14} />
+                </button>
+                <button
+                  onClick={() => {
+                    const versions = runHistory.map(r => r.version).sort((a, b) => a - b);
+                    const currentIndex = versions.indexOf(selectedVersion ?? versions[versions.length - 1]);
+                    const nextIndex = (currentIndex + 1) % versions.length;
+                    loadVersion(versions[nextIndex]);
+                  }}
+                  className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50"
+                >
+                  <SkipForward size={14} />
+                </button>
+              </div>
+            </div>
+
+            {/* Version Timeline */}
+            <div className="relative">
+              <div className="flex items-center justify-between mb-4">
+                {runHistory.map((v, i) => (
+                  <motion.button
+                    key={v.version}
+                    onClick={() => loadVersion(v.version)}
+                    whileTap={{ scale: 0.9 }}
+                    whileHover={{ scale: 1.1 }}
+                    className={`relative flex flex-col items-center transition-all ${
+                      selectedVersion === v.version
+                        ? "text-blue-600"
+                        : "text-slate-400"
+                    }`}
+                    style={{ flex: 1 }}
+                  >
+                    <motion.div
+                      initial={{ scale: 0.8 }}
+                      animate={{ scale: selectedVersion === v.version ? 1.3 : 1 }}
+                      transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                      className={`w-3 h-3 rounded-full border-2 ${
+                        selectedVersion === v.version
+                          ? "bg-blue-600 border-blue-600"
+                          : "bg-white border-slate-300"
+                      }`}
+                    />
+                    <span className="mt-1 text-[10px] font-semibold">v{v.version}</span>
+                    <span className="text-[9px] text-slate-400 mt-0.5 hidden sm:block">
+                      {new Date(v.analyzedAt).toLocaleDateString()}
+                    </span>
+                    {/* Connecting line */}
+                    {i < runHistory.length - 1 && (
+                      <div
+                        className="absolute top-3 left-[50%] w-full h-0.5 -z-10"
+                        style={{
+                          background: `linear-gradient(90deg, ${selectedVersion !== null && selectedVersion > v.version ? '#3b82f6' : '#e2e8f0'} 50%, #e2e8f0 50%)`
+                        }}
+                      />
+                    )}
+                  </motion.button>
+                ))}
+              </div>
+
+              {/* Slider */}
+              <div className="flex items-center gap-3">
+                <input
+                  type="range"
+                  min={Math.min(...runHistory.map(r => r.version))}
+                  max={Math.max(...runHistory.map(r => r.version))}
+                  step={1}
+                  value={selectedVersion ?? Math.max(...runHistory.map(r => r.version))}
+                  onChange={(e) => loadVersion(parseInt(e.target.value))}
+                  className="flex-1 h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                  aria-label="Version slider"
+                />
+                <div className="text-right min-w-[80px]">
+                  <p className="text-sm font-semibold text-slate-700">
+                    Version {selectedVersion ?? Math.max(...runHistory.map(r => r.version))}
+                  </p>
+                  <p className="text-xs text-slate-500">
+                    {runHistory.find(r => r.version === (selectedVersion ?? Math.max(...runHistory.map(r => r.version))))?.analyzedAt
+                      ? new Date(runHistory.find(r => r.version === (selectedVersion ?? Math.max(...runHistory.map(r => r.version))))!.analyzedAt).toLocaleString()
+                      : "Current"
+                    }
+                  </p>
+                </div>
+              </div>
+
+              {/* Version Snapshot */}
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={selectedVersion}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  transition={{ duration: 0.3 }}
+                  className="mt-4 p-4 rounded-xl bg-slate-50 border border-slate-200"
+                >
+                  <div className="grid gap-3 sm:grid-cols-4 text-center">
+                    <div>
+                      <p className="text-2xl font-bold text-slate-700">
+                        {runHistory.find(r => r.version === selectedVersion)?.findings.length ?? run.findings.length}
+                      </p>
+                      <p className="text-[10px] text-slate-500 uppercase tracking-wider">Findings</p>
+                    </div>
+                    <div>
+                      <p className="text-2xl font-bold text-rose-600">
+                        {runHistory.find(r => r.version === selectedVersion)?.findings.filter(f => f.severity === "High").length ?? run.findings.filter(f => f.severity === "High").length}
+                      </p>
+                      <p className="text-[10px] text-slate-500 uppercase tracking-wider">High Severity</p>
+                    </div>
+                    <div>
+                      <p className="text-2xl font-bold text-emerald-600">
+                        {runHistory.find(r => r.version === selectedVersion)?.findings.filter(f => f.status === "Supported").length ?? run.findings.filter(f => f.status === "Supported").length}
+                      </p>
+                      <p className="text-[10px] text-slate-500 uppercase tracking-wider">Supported</p>
+                    </div>
+                    <div>
+                      <p className="text-2xl font-bold text-amber-600">
+                        {runHistory.find(r => r.version === selectedVersion)?.findings.filter(f => f.status === "Outdated").length ?? run.findings.filter(f => f.status === "Outdated").length}
+                      </p>
+                      <p className="text-[10px] text-slate-500 uppercase tracking-wider">Outdated</p>
+                    </div>
+                  </div>
+                </motion.div>
+              </AnimatePresence>
+            </div>
+          </motion.section>
+        )}
+
         {/* Header */}
         <motion.section
           initial={{ opacity: 0, y: 20 }}
@@ -343,23 +597,36 @@ export default function PublicPassport({ params }: { params: Promise<{ runId: st
             <span className="rounded-full bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-600">{run.findings.length} findings</span>
           </div>
           <div className="mt-4 divide-y divide-slate-100">
-            {run.findings.map((finding) => (
-              <div key={finding.id} className="flex items-center gap-3 px-5 py-4">
-                <div className={`flex h-9 w-9 items-center justify-center rounded-xl ${severityColor(finding.severity)}`}>
-                  <AlertTriangle size={18} className="text-white" />
+            {run.findings.map((finding) => {
+              const isHighlighted = highlightFindingId === finding.id;
+              return (
+                <div
+                  key={finding.id}
+                  className={`flex items-center gap-3 px-5 py-4 transition-all duration-300 ${
+                    isHighlighted ? "bg-amber-50 ring-2 ring-amber-300 rounded-lg -mx-5 px-5" : ""
+                  }`}
+                >
+                  <div className={`flex h-9 w-9 items-center justify-center rounded-xl ${severityColor(finding.severity)}`}>
+                    <AlertTriangle size={18} className="text-white" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className={`text-sm font-semibold ${isHighlighted ? "text-amber-800" : ""}`}>{finding.title}</p>
+                    <p className="mt-1 text-xs text-slate-500">{finding.category}</p>
+                    {isHighlighted && (
+                      <span className="inline-flex items-center gap-1 mt-1 text-[10px] font-medium text-amber-700">
+                        <Info size={10} /> Deep-linked finding
+                      </span>
+                    )}
+                  </div>
+                  <span className={`rounded-full px-2.5 py-1 text-[10px] font-semibold ${statusColor(finding.status)}`}>
+                    {finding.action ? finding.action : finding.status}
+                  </span>
+                  <span className="rounded-full bg-blue-50 text-blue-700 px-2.5 py-1 text-[10px] font-semibold">
+                    {finding.severity}
+                  </span>
                 </div>
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-semibold">{finding.title}</p>
-                  <p className="mt-1 text-xs text-slate-500">{finding.category}</p>
-                </div>
-                <span className={`rounded-full px-2.5 py-1 text-[10px] font-semibold ${statusColor(finding.status)}`}>
-                  {finding.action ? finding.action : finding.status}
-                </span>
-                <span className="rounded-full bg-blue-50 text-blue-700 px-2.5 py-1 text-[10px] font-semibold">
-                  {finding.severity}
-                </span>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </motion.section>
 
@@ -386,7 +653,13 @@ export default function PublicPassport({ params }: { params: Promise<{ runId: st
               </div>
               <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
                 <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">AI assistance</p>
-                <p className="mt-1">{run.aiAssistance ? "Declared and recorded" : "No AI assistance used"}</p>
+                <p className="mt-1">
+                  {typeof run.aiAssistance === "string" && run.aiAssistance.includes("AI analysis unavailable")
+                    ? <span className="text-amber-700 font-medium">⚠ {run.aiAssistance}</span>
+                    : run.aiAssistance
+                      ? "Declared and recorded"
+                      : "No AI assistance used"}
+                </p>
               </div>
               <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
                 <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Run ID</p>

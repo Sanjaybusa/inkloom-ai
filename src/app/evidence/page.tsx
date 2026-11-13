@@ -15,8 +15,6 @@ import {
   Database,
   FileText,
   Shield,
-  Eye,
-  X,
   Copy,
 } from "lucide-react";
 import Link from "next/link";
@@ -93,7 +91,9 @@ export default function EvidenceLibrary() {
   }, []);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchEvidence();
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchFindingRefs();
   }, [fetchEvidence, fetchFindingRefs]);
 
@@ -112,6 +112,7 @@ export default function EvidenceLibrary() {
     if (selectedCategory !== "All") {
       filtered = filtered.filter((e) => e.category === selectedCategory);
     }
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setFilteredEvidence(filtered);
   }, [evidence, searchQuery, selectedCategory]);
 
@@ -160,7 +161,7 @@ export default function EvidenceLibrary() {
             </Link>
           </div>
           <Link
-            href="/"
+            href="/workspace"
             className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50"
           >
             <ChevronLeft size={14} /> Back to Workspace
@@ -415,7 +416,7 @@ export default function EvidenceLibrary() {
                                 {findingRefs[record.id]!.map((ref) => (
                                   <Link
                                     key={ref.findingId}
-                                    href={`/?run=${ref.findingId}`}
+                                    href={`/workspace?finding=${ref.findingId}`}
                                     className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-semibold ${severityColor(ref.severity)} hover:opacity-80`}
                                   >
                                     <AlertCircle size={12} />

@@ -1,0 +1,226 @@
+# Inkloom Policy-as-Code Rule Pack v1
+# Each rule defines a deterministic check against extracted claims
+# Loaded at startup, hot-reloadable in dev, versioned in passport
+
+rulesVersion: "1.0"
+description: "Northwind Q4 Campaign Governance Rules"
+author: "Inkloom AI"
+createdAt: "2026-11-09"
+
+rules:
+  # Rule 1: Percentage-based metric claims (savings, reduction, improvement, efficiency)
+  - id: "metric-percentage-claim"
+    name: "Unsupported Metric Claim"
+    category: "Claim verification"
+    severity: "High"
+    pattern:
+      type: "regex"
+      value: "\\d+%"
+    conditions:
+      - field: "claim.text"
+        operator: "contains_any"
+        value: ["reduc", "sav", "improv", "faster", "efficienc", "increas", "boost", "accelerat"]
+    evidenceIds: ["claim-policy-metrics"]
+    explanationTemplate: "The campaign contains a specific metric/figure ({matched_text}) with no approved source."
+    recommendationTemplate: "Remove the figure or attach approved supporting evidence from {evidence_sources}."
+
+  # Rule 2: Superlatives / market leadership claims
+  - id: "superlative-claim"
+    name: "Unsupported Superlative Claim"
+    category: "Claim verification"
+    severity: "High"
+    pattern:
+      type: "regex"
+      value: "(world's|worlds|#1|number one|best in class|market leader|fastest|leading|top-tier|premier|unmatched|unrivaled|industry-leading)"
+    conditions: []
+    evidenceIds: ["claim-policy-superlatives"]
+    explanationTemplate: "A market-wide superlative ({matched_text}) requires dated third-party evidence."
+    recommendationTemplate: "Remove the superlative or replace it with a cited benchmark from {evidence_sources}."
+
+  # Rule 3: Product specifications (data sources, integrations, connectors)
+  - id: "product-spec-mismatch"
+    name: "Outdated Product Specification"
+    category: "Fact verification"
+    severity: "High"
+    pattern:
+      type: "regex"
+      value: "\\d+"
+    conditions:
+      - field: "claim.text"
+        operator: "contains_any"
+        value: ["data source", "integration", "support", "connector", "api", "endpoint"]
+    evidenceIds: ["northwind-integrations"]
+    explanationTemplate: "The claim states {matched_number} but the approved fact sheet specifies {approved_number}."
+    recommendationTemplate: "Replace {matched_number} with {approved_number} and confirm against the current approved product fact sheet."
+    # Special handler: extracts number from claim, compares to evidence
+
+  # Rule 4: Brand terminology (clients vs customers)
+  - id: "brand-terminology-client"
+    name: "Unapproved Brand Terminology"
+    category: "Brand consistency"
+    severity: "Medium"
+    pattern:
+      type: "regex"
+      value: "\\bclient\\b"
+    conditions:
+      - field: "claim.text"
+        operator: "not_contains_any"
+        value: ["client-side", "client server", "client-server"]
+    evidenceIds: ["northwind-terminology"]
+    explanationTemplate: "Northwind uses 'customers' rather than 'clients' in approved campaign copy."
+    recommendationTemplate: "Replace 'clients' with 'customers'."
+
+  # Rule 5: Product name enforcement
+  - id: "brand-product-name"
+    name: "Unapproved Product Name"
+    category: "Brand consistency"
+    severity: "Medium"
+    pattern:
+      type: "regex"
+      value: "(Northwind Analytics|Northwind Platform|Northwind Tool|Northwind Software)"
+    conditions: []
+    evidenceIds: ["northwind-terminology"]
+    explanationTemplate: "The product name '{matched_text}' is not approved. Use 'Northwind Insights'."
+    recommendationTemplate: "Replace '{matched_text}' with 'Northwind Insights'."
+
+  # Rule 6: Accessibility - contrast claims
+  - id: "accessibility-contrast-claim"
+    name: "Accessibility Contrast Claim Requires Verification"
+    category: "Accessibility"
+    severity: "Medium"
+    pattern:
+      type: "regex"
+      value: "(contrast|wcag.*1\\.4\\.3|4\\.5:1)"
+    conditions: []
+    evidenceIds: ["wcag-contrast"]
+    explanationTemplate: "Accessibility claims about contrast must be verified against WCAG 2.2 AA 1.4.3 (4.5:1 minimum)."
+    recommendationTemplate: "Use approved dark grey #374151 on white (~10:1) and recalculate contrast."
+
+  # Rule 7: Accessibility - alt text claims
+  - id: "accessibility-alt-text-claim"
+    name: "Accessibility Alt Text Claim Requires Verification"
+    category: "Accessibility"
+    severity: "High"
+    pattern:
+      type: "regex"
+      value: "(alt text|alternative text|screen reader|wcag.*1\\.1\\.1|1\\.1\\.1)"
+    conditions: []
+    evidenceIds: ["wcag-alt-text"]
+    explanationTemplate: "Accessibility claims about alternative text must be verified against WCAG 2.2 AA 1.1.1."
+    recommendationTemplate: 'Add descriptive alternative text for meaningful images (e.g., "Dashboard showing monthly revenue trends").'
+
+  # Rule 8: Compliance / certification claims
+  - id: "compliance-claim"
+    name: "Unverified Compliance Claim"
+    category: "Fact verification"
+    severity: "High"
+    pattern:
+      type: "regex"
+      value: "(SOC ?2|ISO ?27001|GDPR|HIPAA|compliant|certified|audited|attestation)"
+    conditions: []
+    evidenceIds: ["claim-policy-compliance"]
+    explanationTemplate: "Compliance and certification claims require current, dated evidence from accredited auditors."
+    recommendationTemplate: "Attach current compliance certificate or audit report, or remove the claim."
+
+  # Rule 9: Customer testimonial / quote claims
+  - id: "testimonial-claim"
+    name: "Unverified Customer Testimonial"
+    category: "Claim verification"
+    severity: "Medium"
+    pattern:
+      type: "regex"
+      value: "(\"|').+(\"|')"
+    conditions:
+      - field: "claim.text"
+        operator: "contains_any"
+        value: ["said", "says", "told us", "shared", "feedback", "testimonial", "quote"]
+    evidenceIds: ["claim-policy-testimonials"]
+    explanationTemplate: "Customer quotes require written approval and dated evidence."
+    recommendationTemplate: "Attach approved testimonial release or remove the quote."
+
+  # Rule 10: Future-looking / forward statements
+  - id: "forward-looking-claim"
+    name: "Unqualified Forward-Looking Statement"
+    category: "Claim verification"
+    severity: "Medium"
+    pattern:
+      type: "regex"
+      value: "(will|shall|going to|plan to|aim to|target|forecast|project|expect to|anticipate)"
+    conditions:
+      - field: "claim.text"
+        operator: "not_contains_any"
+        value: ["forward-looking", "subject to", "may", "could", "potential"]
+    evidenceIds: ["claim-policy-forward-looking"]
+    explanationTemplate: "Forward-looking statements require safe harbor language or approved projections."
+    recommendationTemplate: "Add qualifying language or reference approved projection document from {evidence_sources}."
+
+  # Rule 11: Competitor comparison claims
+  - id: "competitor-comparison"
+    name: "Unverified Competitor Comparison"
+    category: "Fact verification"
+    severity: "High"
+    pattern:
+      type: "regex"
+      value: "(vs\\.|versus|compared to|better than|outperforms|beats|surpasses|exceeds)"
+    conditions:
+      - field: "claim.text"
+        operator: "contains_any"
+        value: ["competitor", "rival", "alternative", "other platform", "other tool"]
+    evidenceIds: ["claim-policy-comparisons"]
+    explanationTemplate: "Competitor comparisons require dated, third-party benchmark evidence."
+    recommendationTemplate: "Attach approved benchmark study or remove the comparison."
+
+  # Rule 12: Security claims
+  - id: "security-claim"
+    name: "Unverified Security Claim"
+    category: "Fact verification"
+    severity: "High"
+    pattern:
+      type: "regex"
+      value: "(encrypted|encryption|zero trust|penetration test|pen test|vulnerability|secure|security)"
+    conditions: []
+    evidenceIds: ["claim-policy-security"]
+    explanationTemplate: "Security claims require current audit reports or certifications."
+    recommendationTemplate: "Attach current security audit/certification or remove the claim."
+
+  # Rule 13: AI/ML capability claims
+  - id: "ai-capability-claim"
+    name: "Unverified AI/ML Capability Claim"
+    category: "Fact verification"
+    severity: "Medium"
+    pattern:
+      type: "regex"
+      value: "(AI|artificial intelligence|machine learning|ML|LLM|generative|predictive|automated)"
+    conditions:
+      - field: "claim.text"
+        operator: "contains_any"
+        value: ["powered by", "uses", "leverages", "built on", "driven by"]
+    evidenceIds: ["claim-policy-ai"]
+    explanationTemplate: "AI/ML capability claims require technical documentation or third-party validation."
+    recommendationTemplate: "Attach approved technical specification or remove the claim."
+
+  # Rule 14: Pricing / cost claims
+  - id: "pricing-claim"
+    name: "Unverified Pricing/Cost Claim"
+    category: "Fact verification"
+    severity: "High"
+    pattern:
+      type: "regex"
+      value: "(\\$|USD|price|cost|pricing|affordable|cheaper|save money|budget)"
+    conditions: []
+    evidenceIds: ["claim-policy-pricing"]
+    explanationTemplate: "Pricing claims require current, approved price list reference."
+    recommendationTemplate: "Reference approved pricing page/document or remove specific figures."
+
+  # Rule 15: Availability / uptime claims
+  - id: "uptime-claim"
+    name: "Unverified Availability/Uptime Claim"
+    category: "Fact verification"
+    severity: "High"
+    pattern:
+      type: "regex"
+      value: "(uptime|availability|99\\.9|99\\.99|99\\.999|always on|always available|zero downtime)"
+    conditions: []
+    evidenceIds: ["claim-policy-uptime"]
+    explanationTemplate: "Uptime/availability claims require SLA documentation or status page evidence."
+    recommendationTemplate: "Attach current SLA or status page reference, or remove the claim."

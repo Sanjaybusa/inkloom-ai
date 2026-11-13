@@ -20,12 +20,8 @@ Northwind Insights is the world's fastest analytics platform.
 It connects to 5 data sources.
 Our clients use our platform to improve reporting.`;
 
-// EMBED YOUR PUBLIC KEY HERE (32 bytes = 64 hex chars)
-// Generate with: node -e "const {ed25519}=require('@noble/ed25519'); const {sha512}=require('@noble/hashes/sha512'); ed25519.etc.sha512=(...a)=>sha512(...a); const pk=ed25519.utils.randomPrivateKey(); console.log(Buffer.from(ed25519.getPublicKey(pk)).toString('hex'))"
-// Embedded public key for client-side verification
-// Replace this with your actual public key from keypair generation
-const EMBEDDED_PUBLIC_KEY = "2528d6f057c77a2331ae533d4c96dd6efd207b284b8c7d1e8ec3364ca6b073fe";
-const USE_EMBEDDED_KEY = true; // Set to false if using fallback to passport's public key
+// Use passport's public key for verification (matches the signing key used)
+const USE_EMBEDDED_KEY = false;
 
 type Passport = {
   schemaVersion: string;
@@ -101,7 +97,7 @@ export default function VerifyPage({ params }: { params: Promise<{ runId: string
     const isValid = verifyPassportWithPublicKey(
       signedPassport.passport,
       signedPassport.signature,
-      USE_EMBEDDED_KEY ? EMBEDDED_PUBLIC_KEY : signedPassport.publicKey
+      signedPassport.publicKey
     );
 
     setVerificationResult({

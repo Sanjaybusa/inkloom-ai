@@ -1,7 +1,8 @@
 import { reviewSchema, createErrorResponse, errorCodes } from "@/lib/schemas";
-import { getRun, saveRun } from "@/lib/governance-store";
+import { getRun, saveRun, writeCampaignAudit } from "@/lib/governance-store";
 import { signPassport } from "@/lib/signing";
 import type { Finding } from "@/lib/governance";
+import { checkRateLimit, createRateLimitHeaders, getClientIp } from "@/lib/rate-limit";
 
 function buildCorrectedText(source: string, allFindings: Finding[]): string {
   let corrected = source;
@@ -28,6 +29,12 @@ function buildCorrectedText(source: string, allFindings: Finding[]): string {
 }
 
 export async function POST(request: Request) {
+  const ip = getClientIp(request);
+  const rateLimit = checkRateLimit(ip, { windowMs: 60_000, maxRequests: 20, keyPrefix: "review" });
+  if (!rateLimit.allowed) {
+    return createErrorResponse(errorCodes.RATE_LIMITED, "Too many requests", {}, 429, createRateLimitHeaders(rateLimit));
+  }
+
   try {
     const body = await request.json();
     const { runId, decision, reviewer, reason, version } = reviewSchema.parse(body);
@@ -63,6 +70,16 @@ export async function POST(request: Request) {
     });
 
     await saveRun(run, version);
+
+    // Write campaign audit event
+    if (run.campaignId) {
+      await writeCampaignAudit(run.campaignId, "campaign_reviewed", reviewer, {
+        runId: run.id,
+        decision,
+        reason: reason ?? null,
+        version: run.version,
+      });
+    }
 
     // If approved, also return signed passport in response for immediate verification
     let signedPassport = null;

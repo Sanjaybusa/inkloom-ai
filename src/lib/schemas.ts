@@ -6,9 +6,11 @@ export const analyzeSchema = z.object({
 });
 
 export const claimSchema = z.object({
+  id: z.string().optional().describe("Optional unique identifier for the claim"),
   text: z.string().max(300).describe("The exact claim text as it appears in the content"),
   category: z.enum(["Claim verification", "Fact verification", "Brand consistency", "Accessibility"]).describe("Governance category"),
   severity: z.enum(["High", "Medium", "Low"]).describe("Risk level if claim is unverified"),
+  confidence: z.number().min(0).max(1).optional().describe("Confidence score for the extracted claim"),
   suggestedEvidenceId: z.string().optional().describe("Match to known evidence library ID if obvious"),
 });
 
@@ -53,6 +55,7 @@ export const errorCodes = {
   VALIDATION_ERROR: "VALIDATION_ERROR",
   NOT_FOUND: "NOT_FOUND",
   CONFLICT: "CONFLICT",
+  FORBIDDEN: "FORBIDDEN",
   RATE_LIMITED: "RATE_LIMITED",
   INTERNAL_ERROR: "INTERNAL_ERROR",
 } as const;
@@ -62,3 +65,51 @@ export type ErrorCode = (typeof errorCodes)[keyof typeof errorCodes];
 export function createErrorResponse(code: ErrorCode, message: string, details: Record<string, unknown> = {}, status: number = 400, headers?: Record<string, string>) {
   return Response.json({ error: code, message, details }, { status, headers });
 }
+
+// Evidence CRUD schemas
+export const evidenceCreateSchema = z.object({
+  id: z.string().min(1).max(100),
+  category: z.enum(["Claim verification", "Fact verification", "Brand consistency", "Accessibility"]),
+  source: z.string().min(1).max(200),
+  version: z.string().min(1).max(50),
+  passage: z.string().min(1).max(5000),
+  approved: z.boolean().default(true),
+});
+
+export const evidenceUpdateSchema = z.object({
+  category: z.enum(["Claim verification", "Fact verification", "Brand consistency", "Accessibility"]).optional(),
+  source: z.string().min(1).max(200).optional(),
+  passage: z.string().min(1).max(5000).optional(),
+});
+
+export type EvidenceCreateInput = z.infer<typeof evidenceCreateSchema>;
+export type EvidenceUpdateInput = z.infer<typeof evidenceUpdateSchema>;
+
+// Evidence Record type (for API responses)
+export type EvidenceRecord = {
+  id: string;
+  category: string;
+  source: string;
+  version: string;
+  passage: string;
+  approved: boolean;
+  deprecated?: boolean;
+  deprecated_at?: string;
+  deprecated_reason?: string;
+  org_id?: string;
+  created_at: string;
+  versions?: Array<{
+    id: string;
+    evidence_id: string;
+    version: string;
+    category: string;
+    source: string;
+    passage: string;
+    approved: boolean;
+    deprecated: boolean;
+    deprecated_at?: string;
+    deprecated_reason?: string;
+    created_by: string;
+    created_at: string;
+  }>;
+};

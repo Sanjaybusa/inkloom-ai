@@ -1,5 +1,6 @@
 import { extractClaimsInputSchema, extractClaimsOutputSchema, createErrorResponse, errorCodes, type Claim } from "@/lib/schemas";
 import { Anthropic } from "@anthropic-ai/sdk";
+import { checkRateLimit, createRateLimitHeaders, getClientIp } from "@/lib/rate-limit";
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
@@ -29,18 +30,18 @@ const CLAIM_TOOL_SCHEMA = {
   name: "extract_claims",
   description: "Extract verifiable marketing claims from text for governance review",
   input_schema: {
-    type: "object",
+    type: "object" as const,
     properties: {
       claims: {
-        type: "array",
+        type: "array" as const,
         maxItems: 20,
         items: {
-          type: "object",
+          type: "object" as const,
           properties: {
-            text: { type: "string", maxLength: 300, description: "The exact claim text as it appears in the content" },
-            category: { type: "string", enum: ["Claim verification", "Fact verification", "Brand consistency", "Accessibility"], description: "Governance category" },
-            severity: { type: "string", enum: ["High", "Medium", "Low"], description: "Risk level if claim is unverified" },
-            suggestedEvidenceId: { type: "string", description: "Match to known evidence library ID if obvious" },
+            text: { type: "string" as const, maxLength: 300, description: "The exact claim text as it appears in the content" },
+            category: { type: "string" as const, enum: ["Claim verification", "Fact verification", "Brand consistency", "Accessibility"], description: "Governance category" },
+            severity: { type: "string" as const, enum: ["High", "Medium", "Low"], description: "Risk level if claim is unverified" },
+            suggestedEvidenceId: { type: "string" as const, description: "Match to known evidence library ID if obvious" },
           },
           required: ["text", "category", "severity"],
           additionalProperties: false,
@@ -50,9 +51,17 @@ const CLAIM_TOOL_SCHEMA = {
     required: ["claims"],
     additionalProperties: false,
   },
-};
+} as const;
+
+type ExtractionResult = { claims: Claim[]; aiUnavailable?: boolean; aiError?: string };
 
 export async function POST(request: Request) {
+  const ip = getClientIp(request);
+  const rateLimit = checkRateLimit(ip, { windowMs: 60_000, maxRequests: 30, keyPrefix: "extract-claims" });
+  if (!rateLimit.allowed) {
+    return createErrorResponse(errorCodes.RATE_LIMITED, "Too many requests", {}, 429, createRateLimitHeaders(rateLimit));
+  }
+
   try {
     const body = await request.json();
     const parsed = extractClaimsInputSchema.safeParse(body);
@@ -67,39 +76,51 @@ export async function POST(request: Request) {
       return createErrorResponse(errorCodes.VALIDATION_ERROR, "Text is required for claim extraction.");
     }
 
-    if (!process.env.ANTHROPIC_API_KEY) {
-      return fallbackExtraction(text);
-    }
+    const result = await extractClaimsWithFallback(text);
+    return Response.json(result, { status: 200 });
+  } catch (error) {
+    console.error("Claim extraction failed", error);
+    const fallback = fallbackExtraction("");
+    return Response.json({ ...fallback, aiUnavailable: true, aiError: error instanceof Error ? error.message : "Unknown error" }, { status: 200 });
+  }
+}
 
+async function extractClaimsWithFallback(text: string): Promise<ExtractionResult> {
+  if (!process.env.ANTHROPIC_API_KEY) {
+    return { ...fallbackExtraction(text), aiUnavailable: true, aiError: "ANTHROPIC_API_KEY not configured" };
+  }
+
+  try {
     const response = await anthropic.messages.create({
-      model: "claude-sonnet-4-5-20250929",
+      model: "claude-sonnet-5-5",
       max_tokens: 2048,
       system: SYSTEM_PROMPT,
-      tools: [CLAIM_TOOL_SCHEMA as any],
+      tools: [CLAIM_TOOL_SCHEMA as unknown as Anthropic.Tool],
       tool_choice: { type: "tool", name: "extract_claims" },
       messages: [{ role: "user", content: text }],
     });
 
     const toolUse = response.content.find((block) => block.type === "tool_use");
-    if (!toolUse || toolUse.name !== "extract_claims") {
+    if (!toolUse || toolUse.type !== "tool_use" || toolUse.name !== "extract_claims") {
       console.error("No tool_use returned from Claude", response.content);
-      return fallbackExtraction(text);
+      return { ...fallbackExtraction(text), aiUnavailable: true, aiError: "No tool_use returned from Claude" };
     }
 
     const validated = extractClaimsOutputSchema.safeParse(toolUse.input);
     if (!validated.success) {
       console.error("Claim extraction schema validation failed", validated.error);
-      return fallbackExtraction(text);
+      return { ...fallbackExtraction(text), aiUnavailable: true, aiError: "Schema validation failed" };
     }
 
-    return Response.json({ claims: validated.data.claims }, { status: 200 });
+    return { claims: validated.data.claims, aiUnavailable: false };
   } catch (error) {
-    console.error("Claim extraction failed", error);
-    return fallbackExtraction("");
+    console.error("Claude API call failed", error);
+    const errorMessage = error instanceof Error ? error.message : "Unknown API error";
+    return { ...fallbackExtraction(text), aiUnavailable: true, aiError: errorMessage };
   }
 }
 
-function fallbackExtraction(text: string) {
+function fallbackExtraction(text: string): ExtractionResult {
   const lower = text.toLowerCase();
   const claims: Claim[] = [];
 
@@ -150,7 +171,7 @@ Our clients use our platform to improve reporting.`) {
     );
   }
 
-  return Response.json({ claims });
+  return { claims };
 }
 
 function extractClaim(text: string, phrases: string[]): string {

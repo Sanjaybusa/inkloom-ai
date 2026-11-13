@@ -1,6 +1,7 @@
 import { findingActionSchema, createErrorResponse, errorCodes } from "@/lib/schemas";
-import { getRun, saveRun } from "@/lib/governance-store";
+import { getRun, saveRun, writeCampaignAudit } from "@/lib/governance-store";
 import type { GovernanceRun, Finding, FindingAction } from "@/lib/governance";
+import { checkRateLimit, createRateLimitHeaders, getClientIp } from "@/lib/rate-limit";
 
 function applyFindingAction(run: GovernanceRun, id: string, action: FindingAction, reason?: string, editedFix?: string) {
   const now = new Date().toISOString();
@@ -41,6 +42,12 @@ function applyFindingAction(run: GovernanceRun, id: string, action: FindingActio
 }
 
 export async function POST(request: Request, context: { params: Promise<{ id: string }> }) {
+  const ip = getClientIp(request);
+  const rateLimit = checkRateLimit(ip, { windowMs: 60_000, maxRequests: 30, keyPrefix: "findings-action" });
+  if (!rateLimit.allowed) {
+    return createErrorResponse(errorCodes.RATE_LIMITED, "Too many requests", {}, 429, createRateLimitHeaders(rateLimit));
+  }
+
   try {
     const { id } = await context.params;
     const body = await request.json();
@@ -62,6 +69,18 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
       const expectedVersion = version as number;
       try {
         await saveRun(runToSave, expectedVersion);
+
+        // Write campaign audit event
+        if (runToSave.campaignId) {
+          await writeCampaignAudit(runToSave.campaignId, "campaign_updated", "Demo Reviewer", {
+            runId: runToSave.id,
+            findingAction: action,
+            findingId: id,
+            reason: reason ?? null,
+            editedFix: editedFix ?? null,
+          });
+        }
+
         return Response.json(updatedRun);
       } catch (saveError) {
         if (saveError instanceof Error && saveError.message.includes("Version conflict") && !retried) {

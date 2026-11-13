@@ -24,6 +24,27 @@ export interface SignedPassport {
 }
 
 /**
+ * Validate PASSPORT_SIGNING_KEY at build time and runtime.
+ * Throws if key is missing or malformed.
+ */
+export function validateSigningKey(): { valid: boolean; publicKeyHex: string; error?: string } {
+  const hexKey = process.env.PASSPORT_SIGNING_KEY;
+  if (!hexKey) {
+    return { valid: false, publicKeyHex: "", error: "PASSPORT_SIGNING_KEY not set in environment" };
+  }
+  if (hexKey.length !== 64) {
+    return { valid: false, publicKeyHex: "", error: "PASSPORT_SIGNING_KEY must be 64 hex characters (32 bytes)" };
+  }
+  try {
+    const privateKey = new Uint8Array(Buffer.from(hexKey, "hex"));
+    const publicKey = ed25519.getPublicKey(privateKey);
+    return { valid: true, publicKeyHex: Buffer.from(publicKey).toString("hex") };
+  } catch {
+    return { valid: false, publicKeyHex: "", error: "PASSPORT_SIGNING_KEY is not a valid hex string" };
+  }
+}
+
+/**
  * Generate a new Ed25519 keypair (run once, store private key securely)
  */
 export function generateKeyPair(): KeyPair {
@@ -34,16 +55,14 @@ export function generateKeyPair(): KeyPair {
 
 /**
  * Load signing key from environment (hex-encoded 32-byte private key)
+ * Validates at runtime with clear error messages.
  */
 export function getSigningKey(): Uint8Array {
-  const hexKey = process.env.PASSPORT_SIGNING_KEY;
-  if (!hexKey) {
-    throw new Error("PASSPORT_SIGNING_KEY not set in environment");
+  const validation = validateSigningKey();
+  if (!validation.valid) {
+    throw new Error(validation.error);
   }
-  if (hexKey.length !== 64) {
-    throw new Error("PASSPORT_SIGNING_KEY must be 64 hex characters (32 bytes)");
-  }
-  return new Uint8Array(Buffer.from(hexKey, "hex"));
+  return new Uint8Array(Buffer.from(process.env.PASSPORT_SIGNING_KEY!, "hex"));
 }
 
 /**
@@ -51,6 +70,18 @@ export function getSigningKey(): Uint8Array {
  */
 export function getPublicKeyHex(privateKey: Uint8Array): string {
   return Buffer.from(ed25519.getPublicKey(privateKey)).toString("hex");
+}
+
+/**
+ * Get the public key hex from environment (for embedding in client)
+ * Validates and returns the public key.
+ */
+export function getPublicKeyHexFromEnv(): string {
+  const validation = validateSigningKey();
+  if (!validation.valid) {
+    throw new Error(validation.error);
+  }
+  return validation.publicKeyHex;
 }
 
 /**

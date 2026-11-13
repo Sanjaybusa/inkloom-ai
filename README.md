@@ -112,6 +112,18 @@ Inkloom turns content governance into a **verifiable, cryptographically signed p
 | **Pending** | `?demo=pending` | Awaiting review |
 | **Empty** | `?demo=empty` | Clean slate for custom input |
 
+### Deployed Production Endpoints
+
+| Endpoint | Production URL |
+|----------|----------------|
+| **Landing** | https://inkloom-ai-three.vercel.app |
+| **Workspace** | https://inkloom-ai-three.vercel.app/workspace |
+| **Dashboard** | https://inkloom-ai-three.vercel.app/dashboard |
+| **Evidence Library** | https://inkloom-ai-three.vercel.app/evidence |
+| **Verify Passport** | https://inkloom-ai-three.vercel.app/verify/[runId] |
+| **ScoreCard** | https://inkloom-ai-three.vercel.app/scorecard/[runId] |
+| **Trust Passport** | https://inkloom-ai-three.vercel.app/passport/[runId] |
+
 ---
 
 ## 🏆 What Makes Inkloom Different
@@ -152,7 +164,7 @@ Inkloom turns content governance into a **verifiable, cryptographically signed p
 │ Language             │ TypeScript (strict mode)                   │
 │ Styling              │ Tailwind CSS + Framer Motion               │
 │ Database             │ Supabase PostgreSQL + pgvector             │
-│ AI                   │ Anthropic Claude (claude-sonnet-4-5-20250929) │
+│ AI                   │ Anthropic Claude (claude-sonnet-5-5 / claude-opus-5-5) │
 │ Cryptography         │ @noble/ed25519 + @noble/hashes/sha512      │
 │ Validation           │ Zod (runtime + compile-time)               │
 │ Deployment           │ Vercel (edge-ready)                        │
@@ -226,6 +238,8 @@ cp .env.example .env.local
 | `NEXT_PUBLIC_SUPABASE_URL` | Client Supabase | Same as `SUPABASE_URL` |
 
 > ⚠️ **Never** prefix secrets with `NEXT_PUBLIC_`. The app works fully in demo mode without any credentials.
+
+**Production deployment (Vercel):** The live demo at https://inkloom-ai-three.vercel.app runs in demo mode (in-memory fallback for all Supabase operations). Configure the variables above in Vercel project settings for durable persistence across deployments.
 
 ### Generate Signing Key (for production)
 
